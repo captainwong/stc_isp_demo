@@ -44,6 +44,9 @@ vpath %.asm $(sort $(dir $(ASM_SOURCES)))
 
 all: prepare $(BUILD_DIR)/$(TARGET).hex
 
+gen_gpio_h:
+	@(SYS_DIR=$(SYS_DIR) DEFINES="${C51IOSH_DEFINES}" ${C51IOSH})
+
 $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET)
 	@echo "generating hex file..."
 	@${HEX} ${BUILD_DIR}/${TARGET}.ABS "HEXFILE(${BUILD_DIR}/${TARGET}.hex)" > /dev/null
@@ -74,7 +77,7 @@ $(BUILD_DIR)/$(TARGET): $(OBJECTS)
 	fi; \
 	set -e
 
-$(BUILD_DIR)/%.obj: %.c | Makefile
+$(BUILD_DIR)/%.obj: %.c | Makefile gen_gpio_h
 	@echo "compiling $<..."
 	@set +e; \
 	msg=`${CC} $< "${CFLAGS}" "PRINT(${BUILD_DIR}/$(basename $(notdir $@)).lst)" "OBJECT($@)"`; \

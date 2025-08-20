@@ -18,6 +18,7 @@ SYS_H:=${SYS_DIR}/sys.h
 GPIO_H:=${SYS_DIR}/gpio.h
 C51IOSH_DEFINES=
 C51IOSH="${LIBHB_DIR}/libstc/c51io/c51io.sh"
+
 INC_DIR=${LIBHB_DIR};${LIBHB_DIR}/libemb;${LIBHB_DIR}/libstc;src;src/sys
 DEFINES=WHAT_EVER_YOU_WANT_TO_DEFINE_HERE
 ifeq ($(DEBUG), 1)
@@ -43,6 +44,9 @@ OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(ASM_SOURCES:.asm=.obj)))
 vpath %.asm $(sort $(dir $(ASM_SOURCES)))
 
 all: prepare $(BUILD_DIR)/$(TARGET).hex
+
+gen_gpio_h:
+	@(SYS_DIR=$(SYS_DIR) DEFINES="${C51IOSH_DEFINES}" ${C51IOSH})
 
 $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET)
 	@echo "generating hex file..."
@@ -74,7 +78,7 @@ $(BUILD_DIR)/$(TARGET): $(OBJECTS)
 	fi; \
 	set -e
 
-$(BUILD_DIR)/%.obj: %.c | Makefile
+$(BUILD_DIR)/%.obj: %.c | Makefile gen_gpio_h
 	@echo "compiling $<..."
 	@set +e; \
 	msg=`${CC} $< "${CFLAGS}" "PRINT(${BUILD_DIR}/$(basename $(notdir $@)).lst)" "OBJECT($@)"`; \

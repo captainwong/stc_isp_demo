@@ -30,9 +30,9 @@
 #define PORT_COUNT 4
 #define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
 
-#define GPIO_TABLES_MAP(XX)                 \
-    XX(2, 0, io_pup, LED)  /* 运行指示灯 */ \
-    XX(3, 2, io_pup, BOOT) /* 烧录按键 */
+#define GPIO_TABLES_MAP(XX)                     \
+    XX(2, 0, io_pup, LED_RUN)  /* 运行指示灯 */ \
+    XX(3, 2, io_pup, KEY_BOOT) /* 烧录按键 */
 
 #if !defined(__C51__) || defined(VSCODE)
 #define XX(port, pin, mode, name) sbit name;
@@ -41,5 +41,12 @@
 #endif
 GPIO_TABLES_MAP(XX)
 #undef XX
+
+#define led_run_on() LED_RUN = 0
+#define led_run_off() LED_RUN = 1
+#define led_run_toggle() LED_RUN = !LED_RUN;
+
+#define key_boot_pressed() KEY_BOOT == 0
+#define key_boot_released() KEY_BOOT == 1
 
 #endif /* __SYS_H__ */

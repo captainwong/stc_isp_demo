@@ -4,7 +4,7 @@ set -e
 
 CURRENT_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 
-CC="/e/local_program/tcc-0.9.27-win64-bin/tcc/tcc.exe"
+CC="${CURRENT_DIR}/../../../tcc-0.9.27-win64-bin/tcc/tcc.exe"
 
 # check if CC exists
 if [ ! -x "$CC" ]; then
@@ -38,7 +38,7 @@ if [ ! -f "$sys_h" ]; then
 fi
 
 $CC -I"$SYS_DIR" \
-    -I"H:/dev_hb/libhb" \
+    -I"../libhb" \
     -DVSCODE \
     ${NEW_DEFINES} \
     -run \
