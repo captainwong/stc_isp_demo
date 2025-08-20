@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "C51",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "D:/mdk/C51/INC"
+            ],
+            "defines": [
+                "VSCODE"
+            ],
+            "compilerPath": "D:/mdk/ARM/Compiler_6.22/bin/armclang.exe",
+            "cStandard": "c99",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "gcc-x86"
+        }
+    ],
+    "version": 4
+}
