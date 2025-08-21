@@ -1,7 +1,7 @@
 #include "sys/gpio.h"
 #include "sys/sys.h"
 
-uint32_t xdata dfuflag __at(0x1FFC);  // DFU标志, 定义在xdata的最后4字节
+uint32_t xdata dfuflag __at(DFU_ADDR);
 uint16_t counter_1ms = 0;
 
 void t0_isr() INTERRUPT(TMR0_VECTOR) {
@@ -29,7 +29,7 @@ void main() {
 
     while (1) {
         if (key_boot_pressed()) {
-            dfuflag = DFU_TAG;  // 当需要执行用户ISP代码时,将强制执行标志赋值到DFU标志变量中
+            dfuflag = DFU_TAG;
             sys_reset();
         }
     }

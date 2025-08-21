@@ -7,5 +7,6 @@ cd ${CURRENT_DIR}
 
 rm -rf ./output || true
 
+./update_isr.sh
 time make DEBUG=1 -j
 

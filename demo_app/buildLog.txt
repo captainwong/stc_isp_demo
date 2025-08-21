@@ -26,3 +26,7 @@ Program Size: data=11.0 xdata=4 const=0 code=314
 Program Size: data=11.0 xdata=4 const=0 code=314
 Program Size: data=11.0 xdata=4 const=0 code=325
 Program Size: data=11.0 xdata=4 const=0 code=325
+Program Size: data=11.0 xdata=4 const=0 code=325
+Program Size: data=11.0 xdata=4 const=0 code=325
+Program Size: data=11.0 xdata=4 const=0 code=325
+Program Size: data=11.0 xdata=4 const=0 code=325

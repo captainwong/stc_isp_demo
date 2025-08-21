@@ -5,6 +5,8 @@
 #include <libstc/stc_helpers.h>
 #include <string.h>
 
+#include "../../../common.h"
+
 // #define MAIN_Fosc 22118400UL
 // #define MAIN_Fosc 12000000UL
 #define MAIN_Fosc 24000000UL
@@ -14,11 +16,6 @@
 #define UART1_BAUD 115200UL
 // #define UART1_BAUD 230400UL
 #define UART2_BAUD 115200UL
-
-#define LDR_SIZE 0x1000
-#define LDR_VERSION 0x0100
-
-#define DFU_TAG 0x12ABCD34  // DFU强制执行标志
 
 //////////////////// GPIO ////////////////////
 

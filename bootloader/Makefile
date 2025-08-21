@@ -124,4 +124,4 @@ clean:
 	@rm -f $(BUILD_DIR)/$(TARGET).hex
 	
 
-.PHONY: all clean prepare
+.PHONY: all clean prepare gen_gpio_h
