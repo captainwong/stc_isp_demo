@@ -1,4 +1,12 @@
-A: 23 06 A0 00 00 00 00 00 24 13
+A: 
+23 : #
+06 : len
+A0 : connect
+00 00 : unknown
+00 00 : addr
+00 : size
+24 : $
+13 : sum
 A0: connect
 
 B: 40 00 02 01 00 24 99

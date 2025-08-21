@@ -3,14 +3,14 @@
  * @brief STC official isp demo protocol reverse engined
  * @author captainwong 1281261856#qq.com
  * @date 2025-8-21
- * 
+ *
  * ## programmer packet format
  *   | head | len | cmd | u16 | addr | size | data... | end | sum |
  *   | ---- | --- | --- | --- | ---- | ---- | ------- | --- | --- |
  *   |  '#' |  1  |  1  |  2  |  2   |  1   |   n     | '$' |  1  |
- *   
+ *
  *   head: fixed `#`
- *   len: length of the packet, from `cmd` to data[n-1]
+ *   len: length of the packet body, from `len` to `end`
  *   cmd: command code
  *     - A0: Connect, bootloader should reply with its version
  *     - A1: Read byte
@@ -22,16 +22,16 @@
  *   size: size of the `data` field, BIG-ENDIAN
  *   data: variable length data
  *   end: fixed `$`
- *   sum: checksum, 1 byte, calculated as the sum of all bytes from `head` to `end` then negated, 
+ *   sum: checksum, 1 byte, calculated as the sum of all bytes from `head` to `end` then negated,
  *        also if you sum from `head` to `sum`, you got `0`
- * 
+ *
  * ## bootloader packet format
  *   | head | status | size | data... | end | sum |
  *   | ---- | ------ | ---- | ------- | --- | --- |
  *   |  '@' |  1     |  1   |   n     | '$' |  1  |
- * 
+ *
  *   head: fixed `@`
- *   status: 
+ *   status:
  *     - 0: success
  *     - 1: unkown `cmd`
  *     - 2: `addr` out of range
@@ -50,37 +50,97 @@
 #include <stdint.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if !(defined(__C51__) || defined(__SDCC)) || defined(VSCODE)
 #pragma pack(1)
 #endif
+
+#define PKT_MAX_LEN 255
 
 ////////////////////////////// programmer packet //////////////////////////////
 
 #define ISP_PKT_HEAD '#'
 #define ISP_PKT_END '$'
+#define ISP_CMD_CONNECT 0xA0
+#define ISP_CMD_READ 0xA1
+#define ISP_CMD_PROGRAM 0xA2
+#define ISP_CMD_ERASE 0xA3
+#define ISP_CMD_REBOOT 0xA4
+
+typedef union {
+    uint8_t buf[PKT_MAX_LEN];
+    struct {
+        uint8_t len;
+        uint8_t cmd;
+        uint16_t unknown;
+        uint16_t addr;
+        uint8_t size;
+        uint8_t dat[1];  // variable length data
+    } pkt;
+} isp_packet_t;
+
+typedef enum {
+    ISP_PARSE_STATE_IDLE,
+    ISP_PARSE_STATE_LENGTH,
+    ISP_PARSE_STATE_BODY,
+    ISP_PARSE_STATE_END,
+    ISP_PARSE_STATE_CHECKSUM,
+} isp_pkt_parse_state_t;
 
 typedef struct {
+    uint8_t state;
     uint8_t len;
-    uint8_t cmd;
-    uint16_t unknown;
-    uint16_t addr;
-    uint8_t size;
-    uint8_t dat[1]; // variable length data
-} isp_packet_t;
+    uint8_t sum;
+    isp_packet_t rx;
+} isp_pkt_parse_context_t;
+
+#define isp_parse_init(ctx) ((ctx).state = ISP_PARSE_STATE_IDLE)
+
+// return true if packet is complete
+bool isp_parse(isp_pkt_parse_context_t* ctx, uint8_t b);
 
 ////////////////////////////// bootloader packet //////////////////////////////
 
 #define LDR_PKT_HEAD '@'
 #define LDR_PKT_END '$'
+#define LDR_STATUS_OK 0
+#define LDR_STATUS_UNKNOWN_CMD 1
+#define LDR_STATUS_ADDR_OUT_OF_RANGE 2
+#define LDR_STATUS_PROGRAM_FAILED 3
+
+typedef union {
+    uint8_t buf[PKT_MAX_LEN];
+    struct {
+        uint8_t status;  // 0: success, 1: unknown cmd, 2: addr out of range, 3: program failed
+        uint8_t size;
+        uint8_t dat[1];  // variable length data
+    } pkt;
+} ldr_packet_t;
+
+typedef enum {
+    LDR_PARSE_STATE_IDLE,
+    LDR_PARSE_STATE_STATUS,
+    LDR_PARSE_STATE_SIZE,
+    LDR_PARSE_STATE_DATA,
+    LDR_PARSE_STATE_CHECKSUM
+} ldr_parse_state_t;
 
 typedef struct {
-    uint8_t status; // 0: success, 1: unknown cmd, 2: addr out of range, 3: program failed
-    uint8_t size;
-    uint8_t dat[1]; // variable length data
-} ldr_packet_t;
+    uint8_t state;
+    uint8_t len;
+    uint8_t sum;
+    ldr_packet_t rx;
+} ldr_pkt_parse_context_t;
 
 #if !(defined(__C51__) || defined(__SDCC)) || defined(VSCODE)
 #pragma pack()
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* __PROTOCOL_H__ */

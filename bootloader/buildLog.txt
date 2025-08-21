@@ -26,3 +26,14 @@ Program Size: data=20.1 xdata=516 const=0 code=928
 Program Size: data=20.1 xdata=516 const=0 code=928
 Program Size: data=20.1 xdata=516 const=0 code=928
 Program Size: data=20.1 xdata=516 const=0 code=928
+Program Size: data=20.1 xdata=516 const=0 code=1113
+Program Size: data=20.1 xdata=516 const=0 code=1113
+Program Size: data=20.1 xdata=516 const=0 code=1140
+Program Size: data=20.1 xdata=516 const=0 code=1113
+Program Size: data=14.0 xdata=517 const=0 code=855
+Program Size: data=17.0 xdata=517 const=0 code=1193
+Program Size: data=17.0 xdata=517 const=0 code=1193
+Program Size: data=17.0 xdata=517 const=0 code=1181
+Program Size: data=19.0 xdata=517 const=0 code=1178
+Program Size: data=19.0 xdata=517 const=0 code=1178
+Program Size: data=19.0 xdata=517 const=0 code=1178

@@ -28,9 +28,8 @@ TARGET=BOOTLOADER
 
 C_SOURCES= \
 ${LIBHB_DIR}/libstc/stc8h.c \
-src/dfu.c \
 src/main.c \
-src/uart.c
+src/protocol.c
 
 ASM_SOURCES= \
 src/isr.asm

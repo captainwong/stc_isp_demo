@@ -224,7 +224,7 @@ declare_sfr(0xAF, IE2);  // Interrupt Control 2, Reset Value = 0000,0000
 #define ESPI 0x02        // SPI Interrupt Enable
 #define ES2 0x01         // Serial 2 Interrupt Enable
 
-declare_sfr(0xB0, P3);    // 8 bit Port3, Reset Value = 1111,1111
+declare_sfr(0xB0, P3);     // 8 bit Port3, Reset Value = 1111,1111
 declare_sbit(P3, 0, P30);  // P3.0
 declare_sbit(P3, 1, P31);  // P3.1
 declare_sbit(P3, 2, P32);  // P3.2
@@ -1822,7 +1822,7 @@ declare_sfr(0xFF, RSTCFG);  // Reset Configuration Register, Reset Value = x0x0,
 ////////////////////////////// IAP //////////////////////////////
 
 #define IAP_BASE_ADDR 0x0000  // IAP 基地址
-#define IAP_SECTOR_SIZE 512   // IAP 扇区大小
+#define IAP_PAGE_SIZE 512     // IAP 扇区大小
 
 // 四舍五入函数
 #ifndef round
@@ -1882,7 +1882,6 @@ declare_sfr(0xFF, RSTCFG);  // Reset Configuration Register, Reset Value = x0x0,
 
 // 清理 IAP 失败状态
 #define iap_clear_fail() (IAP_CONTR &= ~CMDFAIL)  // 清除 IAP 失败状态
-
 
 //////////////////////// IAP 函数 //////////////////////////
 // 注意在执行操作之前调用 iap_tps(tps)
