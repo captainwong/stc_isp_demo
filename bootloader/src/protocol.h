@@ -10,7 +10,7 @@
  *   |  '#' |  1  |  1  |  2  |  2   |  1   |   n     | '$' |  1  |
  *
  *   head: fixed `#`
- *   len: length of the packet body, from `len` to `end`
+ *   len: length of the packet body, from `cmd` to `end`
  *   cmd: command code
  *     - A0: Connect, bootloader should reply with its version
  *     - A1: Read byte
@@ -83,7 +83,7 @@ typedef union {
 } isp_packet_t;
 
 typedef enum {
-    ISP_PARSE_STATE_IDLE,
+    ISP_PARSE_STATE_IDLE = 0,
     ISP_PARSE_STATE_LENGTH,
     ISP_PARSE_STATE_BODY,
     ISP_PARSE_STATE_END,
@@ -94,13 +94,13 @@ typedef struct {
     uint8_t state;
     uint8_t len;
     uint8_t sum;
-    isp_packet_t rx;
 } isp_pkt_parse_context_t;
 
 #define isp_parse_init(ctx) ((ctx).state = ISP_PARSE_STATE_IDLE)
 
-// return true if packet is complete
-bool isp_parse(isp_pkt_parse_context_t* ctx, uint8_t b);
+extern bit isp_parse_ok;
+// void isp_parse(isp_pkt_parse_context_t* ctx, uint8_t b);
+
 
 ////////////////////////////// bootloader packet //////////////////////////////
 
@@ -121,7 +121,7 @@ typedef union {
 } ldr_packet_t;
 
 typedef enum {
-    LDR_PARSE_STATE_IDLE,
+    LDR_PARSE_STATE_IDLE = 0,
     LDR_PARSE_STATE_STATUS,
     LDR_PARSE_STATE_SIZE,
     LDR_PARSE_STATE_DATA,
@@ -132,7 +132,6 @@ typedef struct {
     uint8_t state;
     uint8_t len;
     uint8_t sum;
-    ldr_packet_t rx;
 } ldr_pkt_parse_context_t;
 
 #if !(defined(__C51__) || defined(__SDCC)) || defined(VSCODE)

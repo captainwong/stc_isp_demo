@@ -1,4 +1,5 @@
 {
     "files.associations": {
+        "stc_helpers.h": "c"
     }
 }

@@ -7,10 +7,6 @@
 
 #include "../../../common.h"
 
-// #define MAIN_Fosc 22118400UL
-// #define MAIN_Fosc 12000000UL
-#define MAIN_Fosc 24000000UL
-
 #define T1MS (65536 - MAIN_Fosc / 1000)
 
 #define UART1_BAUD 115200UL
@@ -28,7 +24,7 @@
 #define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
 
 #define GPIO_TABLES_MAP(XX)                     \
-    XX(2, 0, io_pup, LED_RUN)  /* 运行指示灯 */ \
+    XX(2, 1, io_pup, LED_RUN)  /* 运行指示灯 */ \
     XX(3, 2, io_pup, KEY_BOOT) /* 烧录按键 */
 
 #if !defined(__C51__) || defined(VSCODE)
@@ -41,7 +37,7 @@ GPIO_TABLES_MAP(XX)
 
 #define led_run_on() LED_RUN = 0
 #define led_run_off() LED_RUN = 1
-#define led_run_toggle() LED_RUN = !LED_RUN;
+#define led_run_toggle() LED_RUN = !LED_RUN
 
 #define key_boot_pressed() KEY_BOOT == 0
 #define key_boot_released() KEY_BOOT == 1

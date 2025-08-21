@@ -9,6 +9,11 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+// #define MAIN_Fosc 11520000UL
+// #define MAIN_Fosc 12000000UL
+// #define MAIN_Fosc 22118400UL
+#define MAIN_Fosc 24000000UL
+
 #define STC_RAM_SIZE 0x2000  // STC8H8K64U has 8KB xdata
 
 #define LDR_SIZE 0x1000     // bootloader flash space = 4KB
