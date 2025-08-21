@@ -7,8 +7,8 @@
 
 #include "../../../common.h"
 
-#define UART1_BAUD 9600
-// #define UART1_BAUD 115200UL
+// #define UART1_BAUD 9600
+#define UART1_BAUD 115200UL
 // #define UART1_BAUD 230400UL
 #define UART2_BAUD 115200UL
 
