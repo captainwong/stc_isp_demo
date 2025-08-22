@@ -15,11 +15,6 @@
 
 //////////////////// GPIO ////////////////////
 
-#define PORT_MODE_IO_PUP 0
-#define PORT_MODE_OUT_PP 1
-#define PORT_MODE_IN_HIZ 2
-#define PORT_MODE_OUT_OD 3
-
 #define PORT_COUNT 4
 #define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
 

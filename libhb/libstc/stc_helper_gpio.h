@@ -10,6 +10,11 @@
 
 ////////////////////////////// GPIO 工作模式 //////////////////////////////
 
+#define PORT_MODE_IO_PUP 0
+#define PORT_MODE_OUT_PP 1
+#define PORT_MODE_IN_HIZ 2
+#define PORT_MODE_OUT_OD 3
+
 /*
 | PnM1.x | PnM0.x | Pn.x工作模式 |
 |--------|--------|--------------|
