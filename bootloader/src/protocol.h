@@ -110,6 +110,7 @@ extern bit isp_parse_ok;
 #define LDR_STATUS_UNKNOWN_CMD 1
 #define LDR_STATUS_ADDR_OUT_OF_RANGE 2
 #define LDR_STATUS_PROGRAM_FAILED 3
+#define LDR_STATUS_LOG 0x80
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];

@@ -3,19 +3,24 @@
 #include "uart.h"
 
 uint32_t xdata dfutag __at(DFU_ADDR);
-isp_pkt_parse_context_t ctx;
-isp_packet_t xdata rx;
-ldr_packet_t xdata tx;
 uint16_t cycles;
 
-void isp_parse(uint8_t b);
 void isp_handle(void);
 
 void delay() {
     volatile uint16_t data i = 0;
+#ifdef DEBUG
+    volatile uint8_t data j = 0;
+    while (++i) {
+        while (++j) {
+            nop1();
+        }
+    }
+#else
     while (++i) {
         nop1();
     }
+#endif
 }
 
 void debug_led(void) {
@@ -29,6 +34,11 @@ void debug_led(void) {
 void main() {
     delay();
     disable_irq();
+    isp_parse_init(ctx);
+    gpio_init();
+    pin_pu(3, 5);
+    uart_init();
+
     if ((dfutag != DFU_TAG) &&
         (*(uint8_t code *)(LDR_SIZE) == 0x02) &&               // check if first op code is `LJMP addr16`
         (*(uint16_t code *)(LDR_SIZE + 1) >= LDR_SIZE + 3)) {  // check if `addr16 >= LDR_SIZE + 3`
@@ -41,15 +51,11 @@ void main() {
     dfutag = 0;     // clear force DFU mode flag
     enable_xsfr();  // for xsfr `IAP_TPS`
     iap_tps(iap_calc_tps(MAIN_Fosc));
-    isp_parse_init(ctx);
-    gpio_init();
-    pin_pu(3, 5);
-    uart_init();
-    cycles = 0;
 
     uart_send(0xAA);
     uart_send(0xBB);
     uart_send(0xCC);
+    cycles = 0;
 
     while (1) {
         debug_led();
@@ -57,7 +63,7 @@ void main() {
             uint8_t dat;
             RI = 0;
             dat = SBUF;
-            isp_parse(dat);
+            uart_parse(dat);
             if (isp_parse_ok) {
                 isp_parse_ok = false;
                 isp_handle();
@@ -72,72 +78,6 @@ void main() {
             sys_reset();
             while (1);
         }
-    }
-}
-
-void send_tx(void) {
-    uint8_t sum = uart_send(LDR_PKT_HEAD), i;
-    sum += uart_send(tx.pkt.status);
-    sum += uart_send(tx.pkt.size);
-    for (i = 0; i < tx.pkt.size; i++) {
-        sum += uart_send(tx.pkt.dat[i]);
-    }
-    sum += uart_send(LDR_PKT_END);
-    uart_send(-sum);
-    while (!TI);
-}
-
-void isp_parse(uint8_t b) {
-    switch (ctx.state) {
-        case ISP_PARSE_STATE_IDLE:
-        check_isp_pkt_head:
-            if (b == ISP_PKT_HEAD) {
-                ctx.len = 0;
-                ctx.sum = b;
-                ctx.state = ISP_PARSE_STATE_LENGTH;
-            }
-            break;
-        case ISP_PARSE_STATE_LENGTH:
-            rx.buf[ctx.len++] = b;
-            ctx.sum += b;
-            ctx.state = ISP_PARSE_STATE_BODY;
-            break;
-        case ISP_PARSE_STATE_BODY:
-            rx.buf[ctx.len++] = b;
-            ctx.sum += b;
-            if (rx.pkt.len + 1 == ctx.len) { // 协议里len不包括len本身，但我的packet里包括了，所以这里+1
-                ctx.state = ISP_PARSE_STATE_END;
-            }
-            break;
-        case ISP_PARSE_STATE_END:
-            if (b == ISP_PKT_END) {
-                ctx.sum += b;
-                ctx.state = ISP_PARSE_STATE_CHECKSUM;
-            } else {
-                uart_send(0xCC);
-                uart_send(b);
-                uart_send(ctx.len);
-                uart_send(rx.pkt.len);
-                ctx.state = ISP_PARSE_STATE_IDLE;
-                goto check_isp_pkt_head;
-            }
-            break;
-        case ISP_PARSE_STATE_CHECKSUM:
-            if (b == -ctx.sum) {
-                ctx.state = ISP_PARSE_STATE_IDLE;
-                isp_parse_ok = true;
-            } else {
-                uart_send(0xDD);
-                uart_send(b);
-                uart_send(ctx.sum);
-                uart_send(-ctx.sum);
-                ctx.state = ISP_PARSE_STATE_IDLE;
-                goto check_isp_pkt_head;
-            }
-            break;
-        default:
-            ctx.state = ISP_PARSE_STATE_IDLE;
-            break;
     }
 }
 
@@ -158,6 +98,9 @@ void isp_handle(void) {
             iap_read_bytes(addr, tx.pkt.dat, 128);
             break;
         case ISP_CMD_PROGRAM:
+            if (!iap_write_bytes_check(addr, rx.pkt.dat, rx.pkt.size)) {
+                tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
+            }
             break;
         case ISP_CMD_ERASE:
             for (addr = 0; addr < 0xF000; addr += IAP_PAGE_SIZE) {
@@ -174,5 +117,5 @@ void isp_handle(void) {
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;
             break;
     }
-    send_tx();
+    uart_send_tx();
 }

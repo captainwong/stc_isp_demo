@@ -7,7 +7,8 @@
                 "D:/mdk/C51/INC"
             ],
             "defines": [
-                "VSCODE"
+                "VSCODE",
+                "DEBUG"
             ],
             "compilerPath": "D:/mdk/ARM/Compiler_6.22/bin/armclang.exe",
             "cStandard": "c99",
