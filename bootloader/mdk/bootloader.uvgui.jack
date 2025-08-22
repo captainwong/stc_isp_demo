@@ -6,7 +6,7 @@
   <Header>### uVision Project, (C) Keil Software</Header>
 
   <PrjGuiSettings>
-    <LastAddFilePath>H:\mcu\c51\ISP\stc_iap_demo\libhb\libstc</LastAddFilePath>
+    <LastAddFilePath>H:\mcu\c51\ISP\stc_iap_demo\bootloader\src</LastAddFilePath>
   </PrjGuiSettings>
 
   <ViewPool/>
@@ -1866,7 +1866,7 @@
       <Doc>
         <Name>..\src\main.c</Name>
         <ColumnNumber>0</ColumnNumber>
-        <TopLine>7</TopLine>
+        <TopLine>1</TopLine>
         <CurrentLine>1</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
