@@ -74,10 +74,12 @@ void uart_parse(uint8_t b) {
                 ctx.sum += b;
                 ctx.state = ISP_PARSE_STATE_CHECKSUM;
             } else {
+#ifdef DEBUG
                 uart_send(0xCC);
                 uart_send(b);
                 uart_send(ctx.len);
                 uart_send(rx.pkt.len);
+#endif
                 ctx.state = ISP_PARSE_STATE_IDLE;
                 goto check_isp_pkt_head;
             }
@@ -87,10 +89,12 @@ void uart_parse(uint8_t b) {
                 ctx.state = ISP_PARSE_STATE_IDLE;
                 isp_parse_ok = true;
             } else {
+#ifdef DEBUG
                 uart_send(0xDD);
                 uart_send(b);
                 uart_send(ctx.sum);
                 uart_send(-ctx.sum);
+#endif
                 ctx.state = ISP_PARSE_STATE_IDLE;
                 goto check_isp_pkt_head;
             }
