@@ -1,0 +1,25 @@
+{
+    "files.associations": {
+        "vector": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp",
+        "list": "cpp",
+        "xhash": "cpp",
+        "qvalidator": "cpp",
+        "format": "cpp",
+        "algorithm": "cpp",
+        "xiosbase": "cpp",
+        "xlocale": "cpp",
+        "qlist": "cpp",
+        "qserialport": "cpp",
+        "future": "cpp",
+        "random": "cpp",
+        "chrono": "cpp",
+        "array": "cpp",
+        "ranges": "cpp",
+        "span": "cpp",
+        "cmath": "cpp",
+        "xtree": "cpp",
+        "*.tcc": "cpp"
+    }
+}

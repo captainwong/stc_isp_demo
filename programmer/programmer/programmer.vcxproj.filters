@@ -1,0 +1,174 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>qml;cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>qrc;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
+    </Filter>
+    <Filter Include="Translation Files">
+      <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
+      <Extensions>ts</Extensions>
+    </Filter>
+    <Filter Include="qhexview">
+      <UniqueIdentifier>{d3b0c670-166c-4e9a-8dc0-1909c3ca24fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="disassembler">
+      <UniqueIdentifier>{e420b039-0311-4e73-ba83-659541d700bd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="programmer.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+    <QtMoc Include="programmer.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClCompile Include="programmer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <None Include="programmer.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <ResourceCompile Include="programmer.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\qhexview.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\qhexcursor.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\qhexdelegate.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\qhexdocument.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\qhexmetadata.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\qhexutils.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\buffer\qdevicebuffer.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\buffer\qhexbuffer.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\buffer\qmappedfilebuffer.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\buffer\qmemorybuffer.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\buffer\qmemoryrefbuffer.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\commands\hexcommand.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\commands\insertcommand.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\commands\removecommand.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\model\commands\replacecommand.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="QHexView\dialogs\hexfinddialog.cpp">
+      <Filter>qhexview</Filter>
+    </ClCompile>
+    <ClCompile Include="disassembler\hex.cpp">
+      <Filter>disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="disassembler\hex80.cpp">
+      <Filter>disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="disassembler\intel8051is.cpp">
+      <Filter>disassembler</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="QHexView\qhexview.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\qhexcursor.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\qhexdelegate.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\qhexdocument.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\qhexmetadata.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\buffer\qdevicebuffer.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\buffer\qhexbuffer.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\buffer\qmemorybuffer.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\model\buffer\qmemoryrefbuffer.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="QHexView\dialogs\hexfinddialog.h">
+      <Filter>qhexview</Filter>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="QHexView\model\qhexoptions.h">
+      <Filter>qhexview</Filter>
+    </ClInclude>
+    <ClInclude Include="QHexView\model\qhexutils.h">
+      <Filter>qhexview</Filter>
+    </ClInclude>
+    <ClInclude Include="QHexView\model\buffer\qmappedfilebuffer.h">
+      <Filter>qhexview</Filter>
+    </ClInclude>
+    <ClInclude Include="QHexView\model\commands\hexcommand.h">
+      <Filter>qhexview</Filter>
+    </ClInclude>
+    <ClInclude Include="QHexView\model\commands\insertcommand.h">
+      <Filter>qhexview</Filter>
+    </ClInclude>
+    <ClInclude Include="QHexView\model\commands\removecommand.h">
+      <Filter>qhexview</Filter>
+    </ClInclude>
+    <ClInclude Include="QHexView\model\commands\replacecommand.h">
+      <Filter>qhexview</Filter>
+    </ClInclude>
+    <ClInclude Include="disassembler\hex.h">
+      <Filter>disassembler</Filter>
+    </ClInclude>
+    <ClInclude Include="disassembler\hex80.h">
+      <Filter>disassembler</Filter>
+    </ClInclude>
+    <ClInclude Include="disassembler\intel8051is.h">
+      <Filter>disassembler</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
