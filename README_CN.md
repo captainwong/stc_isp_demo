@@ -133,11 +133,25 @@ END
 来看一下 ![DEMO_APP.HEX](./img/image.png)
 
 生成的第一条指令位于 `0000H`, 机器码为 `02 100EH`，所以我前面说可以类比为 `STM32` 的 `Reset_Handler`，但51并不把`0000H`认为是复位中断入口地址，仅仅是上电第一条指令的取指地址.
+`100EH` 为 `STARTUP.A51` 内容.
 
-可以看到后面的`1003H` 为 `T0` 中断，`100EH` 为 `STARTUP.A51` 内容.
+可以看到`1003H` 为 `INT0` 中断，由于`DEMO_APP`没写该中断，指向了错误的地址 `0800H`，不知道 `C51` 是怎么处理的.
+`100BH` 为 `TIMER 0` 中断，指向 `111B` 是正确的.
 
-TODO: 解释下载软件是如何将第一行数据转换为 `1000H` 的.
+这种偏移量分布的`HEX`是不能直接交给 `BOOTLOADER` 来烧写的，`BOOTLOADER` 的 `IAP` 操作基地址是`0`，会被映射到真实`FLASH`空间的`LDR_SIZE`处，因此要先将`HEX`转换为`bin`格式，且将第一行的位于 `0000H` 的 `02 10 0E` 代码移动到 `1000H` 处，与后面的组合起来，再整体前移 `1000H`，就得到了可以用来烧写的 `bin` 数据.
 
 ## 4. PROGRAMMER
 
-TODO
+有了理论+协议，就可以编写一个自己的烧录软件了，当然只能用于已经烧录好 `BOOTLOADER` 程序的情况.
+
+点击 `Open` 打开 `DEMO_APP.HEX`, 转换为 `bin` 后是如下分布：
+
+![step1](./img/image2.png)
+
+![step2](./img/image3.png)
+
+再点击 `Patch` 将 `1003H` 处的代码整体前移 `1000H` ，就得到了可以直接烧写的数据：
+
+![step3](./img/image4.png)
+
+连接串口，`Erase All` 再 `Program`, `Reboot`，`USER_APP` 可以正常运行.
