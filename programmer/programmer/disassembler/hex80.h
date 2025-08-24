@@ -81,10 +81,10 @@ void merge_hex80_records(const std::vector<hex80_record_t>& records, std::vector
 
 // convert intel hex-80 format to binary
 // return 0 for success
-int hex80_to_bin(const std::string& hex80_content, std::vector<uint8_t>& bin_data);
+int hex80_to_bin(const std::string& hex80_content, uint8_t filler, std::vector<uint8_t>& bin_data);
 
 // convert binary data to hex-80 string
 // return 0 for success
-int bin_to_hex80(const std::vector<uint8_t>& bin_data, std::string& hex80_content);
+int bin_to_hex80(const std::vector<uint8_t>& bin_data, uint8_t filler, std::string& hex80_content);
 
 #endif /* __INTEL_HEX80_H__ */

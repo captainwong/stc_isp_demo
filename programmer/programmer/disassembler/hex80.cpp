@@ -108,16 +108,25 @@ void merge_hex80_records(const std::vector<hex80_record_t>& records, std::vector
     }
 }
 
-int hex80_to_bin(const std::string& hex80_content, std::vector<uint8_t>& bin_data) {
-    auto lines = jlib::split<std::string>(hex80_content, "\n");
-    if (lines.empty()) {
+int hex80_to_bin(const std::string& hex80_content, uint8_t filler, std::vector<uint8_t>& bin_data) {
+    std::vector<hex80_record_t> records;
+    std::vector<hex80_code_snippet_t> snippets;
+    if (hex80_to_records(hex80_content, records)) {
         return -1;
     }
-    for (auto& line : lines) {
+    merge_hex80_records(records, snippets);
+    for (const auto& snippet : snippets) {
+        auto offset = snippet.addr;
+        auto size = snippet.dat.size();
+        if (bin_data.size() < offset) {
+            // fill bin_data with filler until offset
+            bin_data.resize(offset, filler);
+        }
+        std::copy(snippet.dat.begin(), snippet.dat.end(), bin_data.begin() + offset);
     }
     return 0;
 }
 
-int bin_to_hex80(const std::vector<uint8_t>& bin_data, std::string& hex80_content) {
+int bin_to_hex80(const std::vector<uint8_t>& bin_data, uint8_t filler, std::string& hex80_content) {
     return 0;
 }
