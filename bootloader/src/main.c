@@ -103,8 +103,9 @@ void isp_handle(void) {
             tx.pkt.dat[1] = LDR_VERSION;
             break;
         case ISP_CMD_READ:
-            tx.pkt.size = 128;
-            iap_read_bytes(addr, tx.pkt.dat, 128);
+            tx.pkt.status = LDR_STATUS_ROM;
+            tx.pkt.size = rx.pkt.size;
+            iap_read_bytes(addr, tx.pkt.dat, rx.pkt.size);
             break;
         case ISP_CMD_PROGRAM:
             if (!iap_write_bytes_check(addr, rx.pkt.dat, rx.pkt.size)) {

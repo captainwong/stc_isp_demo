@@ -30,8 +30,10 @@ private slots:
     void slotEraseAll();
     void slotProgram();
     void slotReboot();
+    void slotReadRom();
 
     void program();
+    void read_rom();
 
 private:
     QComboBox* cmbPort{};
@@ -66,9 +68,14 @@ private:
     QPushButton* btnEraseAll{};
     QPushButton* btnProgram{};
     QPushButton* btnReboot{};
+    QLabel* lblReadOffset{};
+    QLineEdit* leReadOffset{};
+    QLabel* lblReadLen{};
+    QLineEdit* leReadLen{};
+    QPushButton* btnReadRom{};
 
     QByteArray e2{};
-    size_t e2sent = 0;
+    size_t e2sent = 0, e2recv = 0;
     QHexDocument* doc{};
     Serial* serial{};
     QMetaObject::Connection connSerialError{};

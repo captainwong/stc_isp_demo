@@ -43,7 +43,7 @@ public:
     void read_ldr_version();
     void read_chip_info();
     void read_chip_version();
-    void read_e2();
+    void read_rom(uint16_t addr, uint8_t size);
     void erase_all();
     void program_bin(uint16_t addr, const QByteArray& bin);
 

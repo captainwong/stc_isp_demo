@@ -120,6 +120,7 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_CHIP_INFO 0x80
 #define LDR_STATUS_CHIP_VERSION 0x81
 #define LDR_STATUS_LOG 0x82
+#define LDR_STATUS_ROM 0x83
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];

@@ -27,11 +27,13 @@ void Serial::send_reboot() {
     send_tx(&tx);
 }
 
-void Serial::read_e2() {
+void Serial::read_rom(uint16_t addr, uint8_t size) {
     isp_packet_t tx = {0};
     tx.pkt.head = ISP_PKT_HEAD;
     tx.pkt.len = 6;
     tx.pkt.cmd = ISP_CMD_READ;
+    tx.pkt.addr = addr;
+    tx.pkt.size = size;
     isp_pkt_end(&tx) = ISP_PKT_END;
     send_tx(&tx);
 }
@@ -78,6 +80,7 @@ void Serial::program_bin(uint16_t addr, const QByteArray& bin) {
     tx.pkt.len = 6 + bin.size();
     tx.pkt.cmd = ISP_CMD_PROGRAM;
     tx.pkt.addr = addr;
+    tx.pkt.size = bin.size() & 0xFF;
     isp_pkt_end(&tx) = ISP_PKT_END;
     memcpy(tx.pkt.dat, bin.constData(), bin.size());
     send_tx(&tx);

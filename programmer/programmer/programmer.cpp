@@ -146,6 +146,12 @@ programmer::programmer(QWidget* parent)
     connect(btnProgram, &QPushButton::clicked, this, &programmer::slotProgram);
     btnReboot = new QPushButton(tr("Reboot"), this);
     connect(btnReboot, &QPushButton::clicked, this, &programmer::slotReboot);
+    lblReadOffset = new QLabel(tr("Offset:"), this);
+    leReadOffset = new QLineEdit("0", this);
+    lblReadLen = new QLabel(tr("Length:"), this);
+    leReadLen = new QLineEdit(this);
+    btnReadRom = new QPushButton(tr("Read ROM"), this);
+    connect(btnReadRom, &QPushButton::clicked, this, &programmer::slotReadRom);
     {
         auto grid = new QGridLayout();
         int row = 0;
@@ -166,10 +172,18 @@ programmer::programmer(QWidget* parent)
         line2->addWidget(btnProgram);
         line2->addWidget(btnReboot);
 
+        auto line3 = new QHBoxLayout();
+        line3->addWidget(lblReadOffset);
+        line3->addWidget(leReadOffset);
+        line3->addWidget(lblReadLen);
+        line3->addWidget(leReadLen);
+        line3->addWidget(btnReadRom);
+
         auto ldrLayout = new QVBoxLayout();
         ldrLayout->addLayout(grid);
         ldrLayout->addLayout(line);
         ldrLayout->addLayout(line2);
+        ldrLayout->addLayout(line3);
         grpLdr->setLayout(ldrLayout);
     }
 
@@ -305,6 +319,22 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             leLdrOutput->moveCursor(QTextCursor::End);
             break;
         }
+        case LDR_STATUS_ROM: {
+            size_t offset = e2recv;
+            size_t total = offset + (pkt->pkt.size);
+            if ((size_t)e2.size() < total) {
+                e2.resize(total);
+            }
+            e2.replace(offset, (pkt->pkt.size), QByteArray((const char*)pkt->pkt.dat, (pkt->pkt.size)));
+            doc->setData(e2);
+
+            e2recv += (pkt->pkt.size);
+            pb->setValue(e2recv);
+            if (e2recv < leReadLen->text().toUInt()) {
+                read_rom();
+            }
+            break;
+        }
     }
 }
 
@@ -353,6 +383,7 @@ void programmer::slotOpen() {
         e2 = dat;
         doc->setData(e2);
         pb->setRange(0, e2.size());
+        pb->setValue(0);
         leRomSize->setText(QString::number(e2.size()));
     } else if (fileName.endsWith(".hex", Qt::CaseInsensitive)) {
         std::vector<hex80_code_snippet_t> snippets;
@@ -388,6 +419,7 @@ void programmer::slotOpen() {
         doc->setData(e2);
         disasmOutput->setPlainText(QString::fromStdString(result));
         pb->setRange(0, e2.size());
+        pb->setValue(0);
         leRomSize->setText(QString::number(e2.size()));
     } else {
         QMessageBox::warning(this, tr("Error"), tr("Unsupported file format"));
@@ -414,6 +446,7 @@ void programmer::slotPatch() {
     e2.resize(valid_size);
     doc->setData(e2);
     pb->setRange(0, e2.size());
+    pb->setValue(0);
     leRomSize->setText(QString::number(e2.size()));
 
     std::string result;
@@ -444,11 +477,19 @@ void programmer::slotEraseAll() {
 
 void programmer::slotProgram() {
     e2sent = 0;
+    pb->setRange(0, e2.size());
     program();
 }
 
 void programmer::slotReboot() {
     serial->send_reboot();
+}
+
+void programmer::slotReadRom() {
+    e2recv = 0;
+    pb->setRange(0, leReadLen->text().toUInt());
+    pb->setValue(0);
+    read_rom();
 }
 
 void programmer::program() {
@@ -457,4 +498,14 @@ void programmer::program() {
     serial->program_bin(rev16(e2sent), bin);
     e2sent += bin.size();
     pb->setValue(e2sent);
+}
+
+void programmer::read_rom() {
+    uint16_t addr = leReadOffset->text().toUInt();
+    size_t size = leReadLen->text().toUInt();
+    size -= addr + e2recv;
+    if (size > 128) {
+        size = 128;
+    }
+    serial->read_rom((uint16_t)(addr + e2recv), size & 0xFF);
 }
