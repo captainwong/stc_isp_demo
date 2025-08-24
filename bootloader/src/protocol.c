@@ -56,9 +56,8 @@ void isp_parse(isp_pkt_parse_context_t* ctx, isp_packet_t* rx, uint8_t b) {
 #endif
 
 uint8_t isp_pkt_calc_sum(isp_packet_t* pkt) {
-    uint8_t sum = ISP_PKT_HEAD, i;
-    sum += pkt->pkt.len;
-    for (i = 0; i < pkt->pkt.len; i++) {
+    uint8_t sum = 0, i;
+    for (i = 0; i < isp_pkt_len(pkt) - 1; i++) {
         sum += pkt->buf[i];
     }
     return -sum;

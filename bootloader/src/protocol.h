@@ -10,7 +10,7 @@
  *   |  '#' |  1  |  1  |  2  |  2   |  1   |   n     | '$' |  1  |
  *
  *   head: fixed `#`
- *   len: length of the packet body, from `cmd` to `end`
+ *   len: length of the packet body, from `cmd` to last byte of `data`
  *   cmd: command code
  *     - A0: Connect, bootloader should reply with its version
  *     - A1: Read byte
@@ -80,8 +80,9 @@ typedef union {
     } pkt;
 } isp_packet_t;
 
-#define isp_pkt_end(_pkt) ((_pkt)->buf[2 + (_pkt)->pkt.len])
-#define isp_pkt_sum(_pkt) ((_pkt)->buf[3 + (_pkt)->pkt.len])
+#define isp_pkt_end(_pkt) (((isp_packet_t*)_pkt)->buf[2 + ((isp_packet_t*)_pkt)->pkt.len])
+#define isp_pkt_sum(_pkt) (((isp_packet_t*)_pkt)->buf[3 + ((isp_packet_t*)_pkt)->pkt.len])
+#define isp_pkt_len(_pkt) (2 + ((isp_packet_t*)_pkt)->pkt.len + 2)  // include head,len,end,sum
 
 typedef enum {
     ISP_PARSE_STATE_IDLE = 0,
@@ -101,7 +102,7 @@ typedef struct {
 
 extern bit isp_parse_ok;
 
-#ifdef _MSC_VER // for programmer
+#ifdef _MSC_VER  // for programmer
 void isp_parse(isp_pkt_parse_context_t* ctx, isp_packet_t* rx, uint8_t b);
 #endif
 

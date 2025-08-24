@@ -21,6 +21,10 @@ int main(int argc, char *argv[]) {
             0x13,
         };
 
+        assert(isp_pkt_end(buf) == ISP_PKT_END);
+        assert(isp_pkt_sum(buf) == 0x13);
+        assert(isp_pkt_len(buf) == sizeof(buf));
+        assert(isp_pkt_calc_sum((isp_packet_t*)buf) == isp_pkt_sum(buf));
         isp_pkt_parse_context_t ctx;
         isp_packet_t rx;
         for (auto c : buf) {
