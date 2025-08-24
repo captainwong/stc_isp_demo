@@ -15,9 +15,11 @@
 #define MAIN_Fosc 24000000UL
 
 #define STC_RAM_SIZE 0x2000  // STC8H8K64U has 8KB xdata
+#define STC_ROM_SIZE 0x10000 // STC8H8K64U has 64KB flash
 
 #define LDR_SIZE 0x1000     // bootloader flash space = 4KB
 #define LDR_VERSION 0x0100  // bootloader version 1.0
+#define LDR_IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE)
 
 #define DFU_TAG 0x12ABCD34UL  // force DFU mode
 #define DFU_ADDR (STC_RAM_SIZE - sizeof(DFU_TAG))
