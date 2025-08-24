@@ -1,5 +1,7 @@
 #include "programmer.h"
 
+#include <jlib/jlib/qt/QtDebug.h>
+#include <jlib/jlib/qt/QtPathHelper.h>
 #include <jlib/jlib/qt/darkmode.h>
 
 #include <QSerialPort>
@@ -51,11 +53,6 @@ programmer::programmer(QWidget* parent)
     }
     cmbBaud->setCurrentText(QString::number(DEFAULT_BAUD));
     btnConnect = new QPushButton(tr("Connect"), this);
-    lblFiller = new QLabel(tr("Filler:"), this);
-    cmbFiller = new QComboBox(this);
-    cmbFiller->setEditable(true);
-    cmbFiller->addItem(("00"), 0x00);
-    cmbFiller->addItem(("FF"), 0xFF);
 
     auto topLayout = new QHBoxLayout();
     topLayout->addWidget(cmbPort, 1);
@@ -75,12 +72,36 @@ programmer::programmer(QWidget* parent)
     pb = new QProgressBar(grpE2);
     pb->setRange(0, E2_EMPTY_SIZE);
 
+    lblFiller = new QLabel(tr("Filler:"), this);
+    cmbFiller = new QComboBox(this);
+    cmbFiller->setEditable(true);
+    cmbFiller->addItem(("00"), 0x00);
+    cmbFiller->addItem(("FF"), 0xFF);
+    lblBootloaderSize = new QLabel(tr("Bootloader:"), this);
+    cmbBootloaderSize = new QComboBox(this);
+    cmbBootloaderSize->setEditable(true);
+    for (int i = 1; i < 63; i++) {
+        cmbBootloaderSize->addItem(QString::number(i), i);
+    }
+    cmbBootloaderSize->setCurrentText("4");
+    lblTotalRomSize = new QLabel("/64KB", this);
+
     btnOpen = new QPushButton(tr("Open"), grpE2);
     connect(btnOpen, &QPushButton::clicked, this, &programmer::slotOpen);
+    btnPatch = new QPushButton(tr("Patch"), grpE2);
+    connect(btnPatch, &QPushButton::clicked, this, &programmer::slotPatch);
+    btnFlash = new QPushButton(tr("Flash"), grpE2);
+    connect(btnFlash, &QPushButton::clicked, this, &programmer::slotFlash);
+
     auto e2BtnLine = new QHBoxLayout();
     e2BtnLine->addWidget(lblFiller);
     e2BtnLine->addWidget(cmbFiller);
+    e2BtnLine->addWidget(lblBootloaderSize);
+    e2BtnLine->addWidget(cmbBootloaderSize);
+    e2BtnLine->addWidget(lblTotalRomSize);
     e2BtnLine->addWidget(btnOpen);
+    e2BtnLine->addWidget(btnPatch);
+    e2BtnLine->addWidget(btnFlash);
 
     auto e2layout = new QVBoxLayout();
     e2layout->addWidget(view, 1);
@@ -218,7 +239,19 @@ static bool tryParseHex80File(const std::string& file_content, std::vector<hex80
 void programmer::slotOpen() {
     // *.bin, *.hex
     const QString supportedFormats = "Binary Files (*.bin);;Hex80 Files (*.hex);;All Files (*.*)";
-    QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"), QString(), supportedFormats);
+    QString dir{};
+#ifdef _DEBUG
+    QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+    MYQDEBUG << d.absolutePath();
+    d.cdUp();
+    MYQDEBUG << d.absolutePath();
+    d.cdUp();
+    MYQDEBUG << d.absolutePath();
+    dir = d.absolutePath() + "/demo_app/output";
+    MYQDEBUG << dir;
+#endif
+
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"), dir, supportedFormats);
     if (fileName.isEmpty()) {
         return;
     }
@@ -275,4 +308,28 @@ void programmer::slotOpen() {
     } else {
         QMessageBox::warning(this, tr("Error"), tr("Unsupported file format"));
     }
+}
+
+void programmer::slotPatch() {
+    size_t ldr_size = cmbBootloaderSize->currentText().toUInt() * 1024;
+    if (ldr_size >= (size_t)e2.size()) {
+        QMessageBox::critical(this, tr("Error"), tr("Bootloader size exceeds or equals to ROM size"));
+        return;
+    }
+    size_t valid_size = e2.size() - ldr_size;
+
+    // move first 3 op codes to ldr_size
+    e2[ldr_size + 0] = e2[0];
+    e2[ldr_size + 1] = e2[1];
+    e2[ldr_size + 2] = e2[2];
+
+    // move valid data to the beginning
+    for (size_t i = 0; i < valid_size; i++) {
+        e2[i] = e2[i + ldr_size];
+    }
+    e2.resize(valid_size);
+    doc->setData(e2);
+}
+
+void programmer::slotFlash() {
 }

@@ -4,7 +4,6 @@
             "name": "C51",
             "includePath": [
                 "${workspaceFolder}/**",
-                "D:/mdk/C51/INC",
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include",
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include/QtCore",
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include/QtGui",
@@ -12,7 +11,8 @@
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include/QtSerialPort",
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include/QtNetwork",
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include/QtMultimedia",
-                "G:/dev_libs"
+                "G:/dev_libs",
+                "D:/mdk/C51/INC"
             ],
             "defines": [
                 "VSCODE",

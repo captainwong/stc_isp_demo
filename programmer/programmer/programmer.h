@@ -18,19 +18,26 @@ private slots:
     void slotRefresh();
     void slotConnect();
     void slotOpen();
+    void slotPatch();
+    void slotFlash();
 
 private:
     QComboBox* cmbPort{};
     QPushButton* btnRefresh{};
     QComboBox* cmbBaud{};
     QPushButton* btnConnect{};
-    QLabel* lblFiller{};
-    QComboBox* cmbFiller{};
 
     QGroupBox* grpE2{};
     QHexView* view{};
     QProgressBar* pb{};
+    QLabel* lblFiller{};
+    QComboBox* cmbFiller{};
+    QLabel* lblBootloaderSize{};
+    QComboBox* cmbBootloaderSize{};
+    QLabel* lblTotalRomSize{};
     QPushButton* btnOpen{};
+    QPushButton* btnPatch{};
+    QPushButton* btnFlash{};
 
     QGroupBox* grpDisasm{};
     QPlainTextEdit* disasmOutput{};
