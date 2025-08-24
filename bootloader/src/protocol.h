@@ -121,17 +121,23 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
     struct {
+        uint8_t head;
         uint8_t status;  // 0: success, 1: unknown cmd, 2: addr out of range, 3: program failed
-        uint8_t size;
+        uint8_t size;    // dat length
         uint8_t dat[1];  // variable length data
     } pkt;
 } ldr_packet_t;
+
+#define ldr_pkt_end(_pkt) (((ldr_packet_t*)_pkt)->buf[3 + ((ldr_packet_t*)_pkt)->pkt.size])
+#define ldr_pkt_sum(_pkt) (((ldr_packet_t*)_pkt)->buf[4 + ((ldr_packet_t*)_pkt)->pkt.size])
+#define ldr_pkt_len(_pkt) (5 + ((ldr_packet_t*)_pkt)->pkt.size)  // include head,status,size,end,sum
 
 typedef enum {
     LDR_PARSE_STATE_IDLE = 0,
     LDR_PARSE_STATE_STATUS,
     LDR_PARSE_STATE_SIZE,
     LDR_PARSE_STATE_DATA,
+    LDR_PARSE_STATE_END,
     LDR_PARSE_STATE_CHECKSUM
 } ldr_parse_state_t;
 
@@ -140,6 +146,14 @@ typedef struct {
     uint8_t len;
     uint8_t sum;
 } ldr_pkt_parse_context_t;
+
+extern bit ldr_parse_ok;
+
+#ifdef _MSC_VER  // for programmer
+void ldr_parse(ldr_pkt_parse_context_t* ctx, ldr_packet_t* rx, uint8_t b);
+#endif
+
+uint8_t ldr_pkt_calc_sum(ldr_packet_t* pkt);
 
 #if !(defined(__C51__) || defined(__SDCC)) || defined(VSCODE)
 #pragma pack()

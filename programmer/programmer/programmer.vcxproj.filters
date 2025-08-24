@@ -30,6 +30,9 @@
     <Filter Include="protocol">
       <UniqueIdentifier>{993040e4-fbd9-4540-904c-bde737983006}</UniqueIdentifier>
     </Filter>
+    <Filter Include="serial">
+      <UniqueIdentifier>{7ec52424-a3e5-432f-b781-0a5e268efabc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="programmer.qrc">
@@ -112,6 +115,9 @@
     <ClCompile Include="..\..\bootloader\src\protocol.c">
       <Filter>protocol</Filter>
     </ClCompile>
+    <ClCompile Include="Serial.cpp">
+      <Filter>serial</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="QHexView\qhexview.h">
@@ -143,6 +149,9 @@
     </QtMoc>
     <QtMoc Include="QHexView\dialogs\hexfinddialog.h">
       <Filter>qhexview</Filter>
+    </QtMoc>
+    <QtMoc Include="Serial.h">
+      <Filter>serial</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>

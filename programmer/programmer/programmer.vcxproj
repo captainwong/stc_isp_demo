@@ -130,6 +130,7 @@
     <ClCompile Include="QHexView\model\qhexmetadata.cpp" />
     <ClCompile Include="QHexView\model\qhexutils.cpp" />
     <ClCompile Include="QHexView\qhexview.cpp" />
+    <ClCompile Include="Serial.cpp" />
     <QtRcc Include="programmer.qrc" />
     <QtMoc Include="programmer.h" />
     <ClCompile Include="programmer.cpp" />
@@ -157,6 +158,7 @@
     <ClInclude Include="disassembler\hex.h" />
     <ClInclude Include="disassembler\hex80.h" />
     <ClInclude Include="disassembler\intel8051is.h" />
+    <QtMoc Include="Serial.h" />
     <QtMoc Include="QHexView\dialogs\hexfinddialog.h" />
     <ClInclude Include="QHexView\model\buffer\qmappedfilebuffer.h" />
     <ClInclude Include="QHexView\model\commands\hexcommand.h" />

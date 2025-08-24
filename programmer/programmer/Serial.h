@@ -45,13 +45,14 @@ public:
     void send_tx(isp_packet_t* tx);
 
 signals:
-    void sig_parsed(uint16_t cmd, QByteArray data);
+    void sig_parsed(QByteArray data);
     void sig_parse_error(uint8_t b);
 
 public slots:
     void slot_serial_on_read();
 
 private:
-    QByteArray in{};
     QByteArray out{};
+    ldr_pkt_parse_context_t ctx{};
+    ldr_packet_t rx{};
 };
