@@ -3,14 +3,18 @@
 #include <jlib/jlib/qt/QtDebug.h>
 #include <jlib/jlib/qt/QtPathHelper.h>
 #include <jlib/jlib/qt/darkmode.h>
+#include <libemb/emb_bitrev.h>
+#include <libstc/stc8h.h>
 
 #include <QSerialPort>
 #include <QSerialPortInfo>
 
 #include "QHexView/model/buffer/qmemorybuffer.h"
 #include "QHexView/qhexview.h"
+#include "Serial.h"
 #include "disassembler/hex80.h"
 #include "disassembler/intel8051is.h"
+#include "stcutil.h"
 
 constexpr const int COMMON_BAUDS[] = {
     1200,
@@ -33,6 +37,7 @@ constexpr const int COMMON_BAUDS[] = {
     3000000,
 };
 
+#define DEFAULT_COM "COM22"
 #define DEFAULT_BAUD 115200
 
 programmer::programmer(QWidget* parent)
@@ -42,6 +47,8 @@ programmer::programmer(QWidget* parent)
     setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
     setStyleSheet(jlib::qt::dark_mode_stylesheet);
     setMinimumSize(1200, 800);
+
+    serial = new Serial(this);
 
     cmbPort = new QComboBox(this);
     btnRefresh = new QPushButton(tr("Refresh"), this);
@@ -53,6 +60,7 @@ programmer::programmer(QWidget* parent)
     }
     cmbBaud->setCurrentText(QString::number(DEFAULT_BAUD));
     btnConnect = new QPushButton(tr("Connect"), this);
+    connect(btnConnect, &QPushButton::clicked, this, &programmer::slotConnect);
 
     auto topLayout = new QHBoxLayout();
     topLayout->addWidget(cmbPort, 1);
@@ -72,6 +80,9 @@ programmer::programmer(QWidget* parent)
     pb = new QProgressBar(grpE2);
     pb->setRange(0, E2_EMPTY_SIZE);
 
+    lblRomSize = new QLabel(tr("ROM Size:"), this);
+    leRomSize = new QLineEdit(this);
+    leRomSize->setReadOnly(true);
     lblFiller = new QLabel(tr("Filler:"), this);
     cmbFiller = new QComboBox(this);
     cmbFiller->setEditable(true);
@@ -92,11 +103,10 @@ programmer::programmer(QWidget* parent)
     btnPatch = new QPushButton(tr("Patch"), grpE2);
     btnPatch->setToolTip(tr("Patch USER_APP hex file"));
     connect(btnPatch, &QPushButton::clicked, this, &programmer::slotPatch);
-    btnFlash = new QPushButton(tr("Flash"), grpE2);
-    connect(btnFlash, &QPushButton::clicked, this, &programmer::slotFlash);
-    btnFlash->setToolTip(tr("Flash USER_APP hex file"));
 
     auto e2BtnLine = new QHBoxLayout();
+    e2BtnLine->addWidget(lblRomSize);
+    e2BtnLine->addWidget(leRomSize);
     e2BtnLine->addWidget(lblFiller);
     e2BtnLine->addWidget(cmbFiller);
     e2BtnLine->addWidget(lblBootloaderSize);
@@ -104,7 +114,6 @@ programmer::programmer(QWidget* parent)
     e2BtnLine->addWidget(lblTotalRomSize);
     e2BtnLine->addWidget(btnOpen);
     e2BtnLine->addWidget(btnPatch);
-    e2BtnLine->addWidget(btnFlash);
 
     auto e2layout = new QVBoxLayout();
     e2layout->addWidget(view, 1);
@@ -119,9 +128,58 @@ programmer::programmer(QWidget* parent)
     disasmLayout->addWidget(disasmOutput);
     grpDisasm->setLayout(disasmLayout);
 
+    grpLdr = new QGroupBox(tr("Bootloader"), this);
+    lblLdrVersion = new QLabel(tr("Version:"), this);
+    leLdrVersion = new QLineEdit(this);
+    lblLdrOutput = new QLabel(tr("Output:"), this);
+    leLdrOutput = new QPlainTextEdit(this);
+    leLdrOutput->setReadOnly(true);
+    btnClearOutput = new QPushButton(tr("Clear Output"), this);
+    connect(btnClearOutput, &QPushButton::clicked, this, &programmer::slotClearOutput);
+    btnReadVersion = new QPushButton(tr("Read Version"), this);
+    connect(btnReadVersion, &QPushButton::clicked, this, &programmer::slotReadVersion);
+    btnReadChipInfo = new QPushButton(tr("Read Chip Info"), this);
+    connect(btnReadChipInfo, &QPushButton::clicked, this, &programmer::slotReadChipInfo);
+    btnEraseAll = new QPushButton(tr("Erase All"), this);
+    connect(btnEraseAll, &QPushButton::clicked, this, &programmer::slotEraseAll);
+    btnProgram = new QPushButton(tr("Program"), this);
+    connect(btnProgram, &QPushButton::clicked, this, &programmer::slotProgram);
+    btnReboot = new QPushButton(tr("Reboot"), this);
+    connect(btnReboot, &QPushButton::clicked, this, &programmer::slotReboot);
+    {
+        auto grid = new QGridLayout();
+        int row = 0;
+        grid->addWidget(lblLdrVersion, row, 0);
+        grid->addWidget(leLdrVersion, row, 1);
+        row++;
+        grid->addWidget(lblLdrOutput, row, 0);
+        grid->addWidget(leLdrOutput, row, 1);
+        row++;
+
+        auto line = new QHBoxLayout();
+        line->addWidget(btnClearOutput);
+        line->addWidget(btnReadVersion);
+        line->addWidget(btnReadChipInfo);
+
+        auto line2 = new QHBoxLayout();
+        line2->addWidget(btnEraseAll);
+        line2->addWidget(btnProgram);
+        line2->addWidget(btnReboot);
+
+        auto ldrLayout = new QVBoxLayout();
+        ldrLayout->addLayout(grid);
+        ldrLayout->addLayout(line);
+        ldrLayout->addLayout(line2);
+        grpLdr->setLayout(ldrLayout);
+    }
+
+    auto bodyRLayout = new QVBoxLayout();
+    bodyRLayout->addWidget(grpDisasm, 1);
+    bodyRLayout->addWidget(grpLdr);
+
     auto bodyLayout = new QHBoxLayout();
     bodyLayout->addWidget(grpE2);
-    bodyLayout->addWidget(grpDisasm);
+    bodyLayout->addLayout(bodyRLayout);
 
     auto mainLayout = new QVBoxLayout();
     mainLayout->addLayout(topLayout);
@@ -129,6 +187,11 @@ programmer::programmer(QWidget* parent)
     setLayout(mainLayout);
 
     slotRefresh();
+    connect(serial, &Serial::sig_parsed, this, &programmer::slot_serial_parsed, Qt::QueuedConnection);
+    connSerialError = connect(serial,
+                              static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
+                              this,
+                              &programmer::slot_serial_error);
 }
 
 programmer::~programmer() {}
@@ -136,99 +199,114 @@ programmer::~programmer() {}
 void programmer::slotRefresh() {
     cmbPort->clear();
     auto all = QSerialPortInfo::availablePorts();
+    QString cur = all.isEmpty() ? QString() : all.first().portName() + " " + all.first().description();
     for (const auto& p : all) {
         QString txt = p.portName() + " " + p.description();
         cmbPort->addItem(txt, p.portName());
+        if (DEFAULT_COM == p.portName()) {
+            cur = txt;
+        }
     }
+    cmbPort->setCurrentText(cur);
 }
 
 void programmer::slotConnect() {
+    if (!serial->isOpen()) {
+        auto portName = cmbPort->currentData().toString();
+        serial->setPortName(portName);
+        int baud = cmbBaud->currentText().toInt();
+        serial->setBaudRate(baud);
+        if (connSerialError) {
+            disconnect(connSerialError);
+        }
+        // serial->clearError();
+        if (!serial->open(QIODevice::ReadWrite)) {
+            QMessageBox::critical(this, tr("Error"), serial->errorString());
+            return;
+        }
+
+        connSerialError = connect(serial,
+                                  static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
+                                  this,
+                                  &programmer::slot_serial_error);
+
+        btnConnect->setText(tr("Disconnect"));
+    } else {
+        slotDisconnect();
+    }
 }
 
-/*
-std::string file_content;
-    std::vector<uint8_t> bin_data;
-    std::ifstream ifs(input_file, std::ios::binary);
-    if (!ifs) {
-        std::cerr << "Failed to open input file: " << input_file << std::endl;
-        return 1;
+void programmer::slotDisconnect() {
+    if (connSerialError) {
+        disconnect(connSerialError);
     }
-    ifs.seekg(0, std::ios::end);
-    std::streamsize size = ifs.tellg();
-    ifs.seekg(0, std::ios::beg);
+    serial->close();
+    btnConnect->setText(tr("Connect"));
+}
 
-    if (format == "hex80") {
-        file_content.resize((size_t)size);
-        if (!ifs.read(&file_content[0], size)) {
-            std::cerr << "Failed to read input file: " << input_file << std::endl;
-            return 1;
-        }
-        std::vector<hex80_record_t> records;
-        if (hex80_to_records(file_content, records)) {
-            std::cerr << "Failed to convert hex80 to records." << std::endl;
-            return 1;
-        }
-        std::string result;
-        std::vector<hex80_code_snippet_t> snippets;
-        merge_hex80_records(records, snippets);
-        for (const auto& snippet : snippets) {
-            int r = disasm(snippet.addr, snippet.dat.data(), snippet.dat.size(), result);
-            if (r < 0) {
-                std::cerr << "Disassembly failed with error code: " << r << std::endl;
-                std::cout << "The recognized ASM instructions are:\n"
-                          << result;
-                return 1;
-            }
-        }
-        if (output_file.empty()) {
-            std::cout << result << std::endl;
-        } else {
-            std::ofstream ofs(output_file);
-            if (!ofs) {
-                std::cerr << "Failed to open output file: " << output_file << std::endl;
-                return 1;
-            }
-            ofs << result;
-        }
-        return 0;
-    } else if (format == "hex") {
-        file_content.resize((size_t)size);
-        if (!ifs.read(&file_content[0], size)) {
-            std::cerr << "Failed to read input file: " << input_file << std::endl;
-            return 1;
-        }
-        if (hex_to_bin(file_content, bin_data)) {
-            std::cerr << "Failed to convert hex to binary." << std::endl;
-            return 1;
-        }
-    } else {
-        bin_data.resize((size_t)size);
-        if (!ifs.read(reinterpret_cast<char*>(bin_data.data()), size)) {
-            std::cerr << "Failed to read input file: " << input_file << std::endl;
-            return 1;
-        }
+void programmer::slot_serial_error(QSerialPort::SerialPortError serialPortError) {
+    if (serialPortError == QSerialPort::NoError) {
+        return;
     }
+    slotDisconnect();
+    QMessageBox::critical(this, tr("COM Error"), serial->errorString());
+}
 
-    std::string result;
-    int r = disasm(0, bin_data.data(), bin_data.size(), result);
-    if (r < 0) {
-        std::cerr << "Disassembly failed with error code: " << r << std::endl;
-        std::cout << "The recognized ASM instructions are:\n"
-                  << result;
-        return 1;
-    } else {
-        if (output_file.empty()) {
-            std::cout << result << std::endl;
-        } else {
-            std::ofstream ofs(output_file);
-            if (!ofs) {
-                std::cerr << "Failed to open output file: " << output_file << std::endl;
-                return 1;
+void programmer::slot_serial_parsed(const QByteArray& buf) {
+    auto pkt = reinterpret_cast<const ldr_packet_t*>(buf.constData());
+    char sbuf[64];
+    switch (pkt->pkt.status) {
+        case LDR_STATUS_OK:
+            if (pkt->pkt.size == 2) {
+                snprintf(sbuf, sizeof(sbuf), "0x%04X, %d.%d",
+                         (pkt->pkt.dat[0] << 8) | pkt->pkt.dat[1],
+                         pkt->pkt.dat[0], pkt->pkt.dat[1]);
+                leLdrVersion->setText(sbuf);
             }
-            ofs << result;
+            if (e2sent && e2sent < (size_t)e2.size()) {
+                program();
+            } else {
+                leLdrOutput->moveCursor(QTextCursor::End);
+                leLdrOutput->insertPlainText("OK\n");
+                leLdrOutput->moveCursor(QTextCursor::End);
+            }
+            break;
+        case LDR_STATUS_UNKNOWN_CMD:
+            leLdrOutput->moveCursor(QTextCursor::End);
+            leLdrOutput->insertPlainText("Unknow CMD\n");
+            leLdrOutput->moveCursor(QTextCursor::End);
+            break;
+        case LDR_STATUS_ADDR_OUT_OF_RANGE:
+            leLdrOutput->moveCursor(QTextCursor::End);
+            leLdrOutput->insertPlainText("Address Out Of Range\n");
+            leLdrOutput->moveCursor(QTextCursor::End);
+            break;
+        case LDR_STATUS_PROGRAM_FAILED:
+            leLdrOutput->moveCursor(QTextCursor::End);
+            leLdrOutput->insertPlainText("Program Failed\n");
+            leLdrOutput->moveCursor(QTextCursor::End);
+            break;
+        case LDR_STATUS_CHIP_INFO:
+            leLdrOutput->moveCursor(QTextCursor::End);
+            leLdrOutput->insertPlainText(chipInfo2String((stc_chipid_t*)&pkt->pkt.dat[0]));
+            leLdrOutput->moveCursor(QTextCursor::End);
+            serial->read_chip_version();
+            break;
+        case LDR_STATUS_CHIP_VERSION:
+            snprintf(sbuf, sizeof(sbuf), "Chip Version: %c\n", pkt->pkt.dat[0]);
+            leLdrOutput->moveCursor(QTextCursor::End);
+            leLdrOutput->insertPlainText(sbuf);
+            leLdrOutput->moveCursor(QTextCursor::End);
+            break;
+        case LDR_STATUS_LOG: {
+            QString log = QString::fromLatin1((const char*)pkt->pkt.dat, pkt->pkt.size) + "\n";
+            leLdrOutput->moveCursor(QTextCursor::End);
+            leLdrOutput->insertPlainText(log);
+            leLdrOutput->moveCursor(QTextCursor::End);
+            break;
         }
     }
-*/
+}
 
 static bool tryParseHex80File(const std::string& file_content, std::vector<hex80_code_snippet_t>& snippets) {
     std::vector<hex80_record_t> records;
@@ -264,20 +342,21 @@ void programmer::slotOpen() {
         QMessageBox::warning(this, tr("Error"), tr("Failed to open file"));
         return;
     }
-    QByteArray data = file.readAll();
-    if (data.length() > E2_MAX_SIZE) {
+    QByteArray dat = file.readAll();
+    if (dat.length() > E2_MAX_SIZE) {
         QMessageBox::critical(this, tr("Error"), tr("ROM space exceeded 64KB"));
         return;
     }
 
     // for .bin files, read the content and update the view
     if (fileName.endsWith(".bin", Qt::CaseInsensitive)) {
-        e2 = data;
+        e2 = dat;
         doc->setData(e2);
         pb->setRange(0, e2.size());
+        leRomSize->setText(QString::number(e2.size()));
     } else if (fileName.endsWith(".hex", Qt::CaseInsensitive)) {
         std::vector<hex80_code_snippet_t> snippets;
-        if (!tryParseHex80File(data.toStdString(), snippets)) {
+        if (!tryParseHex80File(dat.toStdString(), snippets)) {
             QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
             return;
         }
@@ -308,6 +387,8 @@ void programmer::slotOpen() {
 
         doc->setData(e2);
         disasmOutput->setPlainText(QString::fromStdString(result));
+        pb->setRange(0, e2.size());
+        leRomSize->setText(QString::number(e2.size()));
     } else {
         QMessageBox::warning(this, tr("Error"), tr("Unsupported file format"));
     }
@@ -332,6 +413,8 @@ void programmer::slotPatch() {
     }
     e2.resize(valid_size);
     doc->setData(e2);
+    pb->setRange(0, e2.size());
+    leRomSize->setText(QString::number(e2.size()));
 
     std::string result;
     int r = disasm(0, (const uint8_t*)e2.constData(), e2.size(), result);
@@ -342,5 +425,36 @@ void programmer::slotPatch() {
     }
 }
 
-void programmer::slotFlash() {
+void programmer::slotClearOutput() {
+    leLdrOutput->clear();
+}
+
+void programmer::slotReadVersion() {
+    leLdrVersion->clear();
+    serial->read_ldr_version();
+}
+
+void programmer::slotReadChipInfo() {
+    serial->read_chip_info();
+}
+
+void programmer::slotEraseAll() {
+    serial->erase_all();
+}
+
+void programmer::slotProgram() {
+    e2sent = 0;
+    program();
+}
+
+void programmer::slotReboot() {
+    serial->send_reboot();
+}
+
+void programmer::program() {
+    auto bin = e2.mid(e2sent, 128);
+    MYQDEBUG << "Programming" << QString::number(e2sent, 16) << "size=" << bin.size();
+    serial->program_bin(rev16(e2sent), bin);
+    e2sent += bin.size();
+    pb->setValue(e2sent);
 }

@@ -1,12 +1,14 @@
 #pragma once
 
 #include <QtWidgets>
+#include <QSerialPort>
 
 #define E2_MAX_SIZE 0x10000
 #define E2_EMPTY_SIZE 0x100
 
 class QHexDocument;
 class QHexView;
+class Serial;
 class programmer : public QDialog {
     Q_OBJECT
 
@@ -17,9 +19,19 @@ public:
 private slots:
     void slotRefresh();
     void slotConnect();
+    void slotDisconnect();    
+    void slot_serial_error(QSerialPort::SerialPortError serialPortError);
+    void slot_serial_parsed(const QByteArray& pkt);
     void slotOpen();
     void slotPatch();
-    void slotFlash();
+    void slotClearOutput();
+    void slotReadVersion();
+    void slotReadChipInfo();
+    void slotEraseAll();
+    void slotProgram();
+    void slotReboot();
+
+    void program();
 
 private:
     QComboBox* cmbPort{};
@@ -30,6 +42,8 @@ private:
     QGroupBox* grpE2{};
     QHexView* view{};
     QProgressBar* pb{};
+    QLabel* lblRomSize{};
+    QLineEdit* leRomSize{};
     QLabel* lblFiller{};
     QComboBox* cmbFiller{};
     QLabel* lblBootloaderSize{};
@@ -37,11 +51,25 @@ private:
     QLabel* lblTotalRomSize{};
     QPushButton* btnOpen{};
     QPushButton* btnPatch{};
-    QPushButton* btnFlash{};
 
     QGroupBox* grpDisasm{};
     QPlainTextEdit* disasmOutput{};
 
+    QGroupBox* grpLdr{};
+    QLabel* lblLdrVersion{};
+    QLineEdit* leLdrVersion{};
+    QLabel* lblLdrOutput{};
+    QPlainTextEdit* leLdrOutput{};
+    QPushButton* btnClearOutput{};
+    QPushButton* btnReadVersion{};
+    QPushButton* btnReadChipInfo{};
+    QPushButton* btnEraseAll{};
+    QPushButton* btnProgram{};
+    QPushButton* btnReboot{};
+
     QByteArray e2{};
+    size_t e2sent = 0;
     QHexDocument* doc{};
+    Serial* serial{};
+    QMetaObject::Connection connSerialError{};
 };

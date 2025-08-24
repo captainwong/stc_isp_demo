@@ -2058,7 +2058,7 @@ typedef union {
 #pragma pack()
 #endif
 
-#ifdef __C51__
+#if defined(__C51__) || defined(VSCODE)
 // STC 同型号的芯片有不同版本，如A,B,C,D等
 // char stc_chip_version();
 #define stc_chip_version() (IAP_ADDRL = 2, DID + 'A')
@@ -2082,7 +2082,7 @@ typedef union {
 // STC 封装编号
 #define STC_PACKAGE() (*(volatile uint8_t xdata *)0xFDFE)
 
-#endif /* __C51__ */
+#endif /* defined(__C51__) || defined(VSCODE) */
 
 #ifdef __cplusplus
 }

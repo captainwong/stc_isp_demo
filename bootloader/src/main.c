@@ -4,14 +4,16 @@
 
 uint32_t xdata dfutag __at(DFU_ADDR);
 uint16_t cycles;
+uint16_t rx_time, rx_timeout;
 
 void isp_handle(void);
 
 void delay() {
     volatile uint16_t data i = 0;
 #ifdef DEBUG
-    volatile uint8_t data j = 0;
+    volatile uint8_t data j;
     while (++i) {
+        j = 200;
         while (++j) {
             nop1();
         }
@@ -39,6 +41,12 @@ void main() {
     pin_pu(3, 5);
     uart_init();
 
+    debugf2("dfutag=%08X", dfutag);
+    debugf4("first 3 byte: %02bX %02bX %02bX",
+            *(uint8_t code *)(LDR_SIZE),
+            *(uint8_t code *)(LDR_SIZE + 1),
+            *(uint8_t code *)(LDR_SIZE + 2));
+
     if ((dfutag != DFU_TAG) &&
         (*(uint8_t code *)(LDR_SIZE) == 0x02) &&               // check if first op code is `LJMP addr16`
         (*(uint16_t code *)(LDR_SIZE + 1) >= LDR_SIZE + 3)) {  // check if `addr16 >= LDR_SIZE + 3`
@@ -51,10 +59,6 @@ void main() {
     dfutag = 0;     // clear force DFU mode flag
     enable_xsfr();  // for xsfr `IAP_TPS`
     iap_tps(iap_calc_tps(MAIN_Fosc));
-
-    uart_send(0xAA);
-    uart_send(0xBB);
-    uart_send(0xCC);
     cycles = 0;
 
     while (1) {
@@ -63,11 +67,16 @@ void main() {
             uint8_t dat;
             RI = 0;
             dat = SBUF;
+            rx_time = rx_timeout = cycles;
             uart_parse(dat);
             if (isp_parse_ok) {
                 isp_parse_ok = false;
                 isp_handle();
             }
+        }
+
+        if (++rx_timeout == rx_time) {  // 转一圈还没有新的数据，说明这一包超时
+            isp_parse_init(ctx);
         }
 
         if (++cycles == 0) {
@@ -112,6 +121,16 @@ void isp_handle(void) {
             break;
         case ISP_CMD_REBOOT:
             sys_reset();
+            break;
+        case ISP_CMD_READ_CHIP_INFO:
+            tx.pkt.status = LDR_STATUS_CHIP_INFO;
+            tx.pkt.size = sizeof(stc_chipid_t);
+            *(stc_chipid_t *)tx.pkt.dat = STC_CHIPID();
+            break;
+        case ISP_CMD_READ_CHIP_VERSION:
+            tx.pkt.status = LDR_STATUS_CHIP_VERSION;
+            tx.pkt.size = 1;
+            tx.pkt.dat[0] = stc_chip_version();
             break;
         default:
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;

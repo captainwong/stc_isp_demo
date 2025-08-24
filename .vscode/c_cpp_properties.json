@@ -3,6 +3,7 @@
         {
             "name": "C51",
             "includePath": [
+                "C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt",
                 "${workspaceFolder}/**",
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include",
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include/QtCore",
@@ -16,6 +17,7 @@
             ],
             "defines": [
                 "VSCODE",
+                "EMB_ENABLE_CUSTOM_STDIO",
                 "DEBUG"
             ],
             "compilerPath": "D:/mdk/ARM/Compiler_6.22/bin/armclang.exe",

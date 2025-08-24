@@ -2,6 +2,7 @@
 
 #include <QList>
 #include <QSerialPort>
+#include <stdio.h>
 
 #include "../../bootloader/src/protocol.h"
 
@@ -40,8 +41,12 @@ public:
 
     void send_reboot();
     void read_ldr_version();
-    void read_chipid();
+    void read_chip_info();
+    void read_chip_version();
     void read_e2();
+    void erase_all();
+    void program_bin(uint16_t addr, const QByteArray& bin);
+
     void send_tx(isp_packet_t* tx);
 
 signals:

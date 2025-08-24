@@ -66,6 +66,7 @@ extern "C" {
 #define ISP_CMD_ERASE 0xA3
 #define ISP_CMD_REBOOT 0xA4
 #define ISP_CMD_READ_CHIP_INFO 0xB0
+#define ISP_CMD_READ_CHIP_VERSION 0xB1
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
@@ -117,6 +118,8 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_ADDR_OUT_OF_RANGE 2
 #define LDR_STATUS_PROGRAM_FAILED 3
 #define LDR_STATUS_CHIP_INFO 0x80
+#define LDR_STATUS_CHIP_VERSION 0x81
+#define LDR_STATUS_LOG 0x82
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];

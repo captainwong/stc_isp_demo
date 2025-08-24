@@ -66,7 +66,7 @@ void uart_parse(uint8_t b) {
         case ISP_PARSE_STATE_BODY:
             rx.buf[ctx.len++] = b;
             ctx.sum += b;
-            if (rx.pkt.len + 2 == ctx.len) {  // // 协议里len不包括head, len，但ctx->len里包括了，所以这里+2
+            if (rx.pkt.len + 2 == ctx.len) {  // 协议里len不包括head, len，但ctx->len里包括了，所以这里+2
                 ctx.state = ISP_PARSE_STATE_END;
             }
             break;
@@ -105,3 +105,15 @@ void uart_parse(uint8_t b) {
             break;
     }
 }
+
+#ifdef DEBUG
+void uart_debug(const char* fmt, ...) {
+    va_list args;
+    tx.pkt.status = LDR_STATUS_LOG;
+    tx.pkt.size = 0;
+    va_start(args, fmt);
+    tx.pkt.size = vsprintf(tx.pkt.dat, fmt, args);
+    va_end(args);
+    uart_send_tx();
+}
+#endif /* DEBUG */

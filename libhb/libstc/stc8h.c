@@ -36,7 +36,7 @@ void iap_write_byte(uint16_t addr, uint8_t b) {
 
 bool iap_write_byte_check(uint16_t addr, uint8_t b) {
     iap_write_byte(addr, b);
-    return iap_read_byte(addr) == b && !iap_is_fail();  // check if write was successful
+    return !iap_is_fail() && iap_read_byte(addr) == b;  // check if write was successful
 }
 
 void iap_write_bytes(uint16_t addr, uint8_t* buf, uint16_t len) {

@@ -13,6 +13,7 @@ libemb/time/gmtime.c
 libemb/time/localtime.c
 libemb/time/mktime.c
 libemb/time/time.c
+libemb/emb_bitrev.h
 libemb/emb_config.h
 libemb/emb_stdint.h
 libemb/emb_time.h
