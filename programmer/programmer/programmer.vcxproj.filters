@@ -27,6 +27,9 @@
     <Filter Include="disassembler">
       <UniqueIdentifier>{e420b039-0311-4e73-ba83-659541d700bd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="protocol">
+      <UniqueIdentifier>{993040e4-fbd9-4540-904c-bde737983006}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="programmer.qrc">
@@ -106,6 +109,9 @@
     <ClCompile Include="disassembler\intel8051is.cpp">
       <Filter>disassembler</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\bootloader\src\protocol.c">
+      <Filter>protocol</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="QHexView\qhexview.h">
@@ -169,6 +175,9 @@
     </ClInclude>
     <ClInclude Include="disassembler\intel8051is.h">
       <Filter>disassembler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\bootloader\src\protocol.h">
+      <Filter>protocol</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

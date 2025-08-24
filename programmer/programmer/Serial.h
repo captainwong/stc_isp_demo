@@ -3,6 +3,8 @@
 #include <QList>
 #include <QSerialPort>
 
+#include "../../bootloader/src/protocol.h"
+
 #define qdebug_qbytes(origin)                               \
     do {                                                    \
         auto arr = origin;                                  \
@@ -37,10 +39,10 @@ public:
     Serial(QObject* parent);
 
     void send_reboot();
-    void send_reset_wb2();
-    void read_e2();
+    void read_ldr_version();
     void read_chipid();
-    void send_buf(const uint8_t* buf, size_t len, pc2twifi_cmd_t cmd);
+    void read_e2();
+    void send_tx(isp_packet_t* tx);
 
 signals:
     void sig_parsed(uint16_t cmd, QByteArray data);

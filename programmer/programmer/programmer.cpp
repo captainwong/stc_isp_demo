@@ -87,11 +87,14 @@ programmer::programmer(QWidget* parent)
     lblTotalRomSize = new QLabel("/64KB", this);
 
     btnOpen = new QPushButton(tr("Open"), grpE2);
+    btnOpen->setToolTip(tr("Open USER_APP hex file"));
     connect(btnOpen, &QPushButton::clicked, this, &programmer::slotOpen);
     btnPatch = new QPushButton(tr("Patch"), grpE2);
+    btnPatch->setToolTip(tr("Patch USER_APP hex file"));
     connect(btnPatch, &QPushButton::clicked, this, &programmer::slotPatch);
     btnFlash = new QPushButton(tr("Flash"), grpE2);
     connect(btnFlash, &QPushButton::clicked, this, &programmer::slotFlash);
+    btnFlash->setToolTip(tr("Flash USER_APP hex file"));
 
     auto e2BtnLine = new QHBoxLayout();
     e2BtnLine->addWidget(lblFiller);
@@ -237,8 +240,8 @@ static bool tryParseHex80File(const std::string& file_content, std::vector<hex80
 }
 
 void programmer::slotOpen() {
-    // *.bin, *.hex
-    const QString supportedFormats = "Binary Files (*.bin);;Hex80 Files (*.hex);;All Files (*.*)";
+    // *.hex
+    const QString supportedFormats = "Hex80 Files (*.hex);;All Files (*.*)";
     QString dir{};
 #ifdef _DEBUG
     QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
@@ -329,6 +332,14 @@ void programmer::slotPatch() {
     }
     e2.resize(valid_size);
     doc->setData(e2);
+
+    std::string result;
+    int r = disasm(0, (const uint8_t*)e2.constData(), e2.size(), result);
+    if (r < 0) {
+        QMessageBox::warning(this, tr("Error"), tr("Disassembly failed"));
+    } else {
+        disasmOutput->setPlainText(QString::fromStdString(result));
+    }
 }
 
 void programmer::slotFlash() {

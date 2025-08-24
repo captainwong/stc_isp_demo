@@ -44,11 +44,7 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
-#if defined(__C51__) || defined(VSCODE)
-#include "sys/sys.h"
-#else
-#include <stdint.h>
-#endif
+#include <libemb/emb_config.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,10 +65,12 @@ extern "C" {
 #define ISP_CMD_PROGRAM 0xA2
 #define ISP_CMD_ERASE 0xA3
 #define ISP_CMD_REBOOT 0xA4
+#define ISP_CMD_READ_CHIP_INFO 0xB0
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
     struct {
+        uint8_t head;
         uint8_t len;
         uint8_t cmd;
         uint16_t unknown;
@@ -81,6 +79,9 @@ typedef union {
         uint8_t dat[1];  // variable length data
     } pkt;
 } isp_packet_t;
+
+#define isp_pkt_end(_pkt) ((_pkt)->buf[2 + (_pkt)->pkt.len])
+#define isp_pkt_sum(_pkt) ((_pkt)->buf[3 + (_pkt)->pkt.len])
 
 typedef enum {
     ISP_PARSE_STATE_IDLE = 0,
@@ -99,8 +100,12 @@ typedef struct {
 #define isp_parse_init(ctx) ((ctx).state = ISP_PARSE_STATE_IDLE)
 
 extern bit isp_parse_ok;
-// void isp_parse(isp_pkt_parse_context_t* ctx, uint8_t b);
 
+#ifdef _MSC_VER // for programmer
+void isp_parse(isp_pkt_parse_context_t* ctx, isp_packet_t* rx, uint8_t b);
+#endif
+
+uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 
 ////////////////////////////// bootloader packet //////////////////////////////
 
@@ -110,7 +115,7 @@ extern bit isp_parse_ok;
 #define LDR_STATUS_UNKNOWN_CMD 1
 #define LDR_STATUS_ADDR_OUT_OF_RANGE 2
 #define LDR_STATUS_PROGRAM_FAILED 3
-#define LDR_STATUS_LOG 0x80
+#define LDR_STATUS_CHIP_INFO 0x80
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];

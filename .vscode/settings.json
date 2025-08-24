@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "stc_helpers.h": "c"
+        "stc_helpers.h": "c",
+        "protocol.C": "cpp"
     }
 }

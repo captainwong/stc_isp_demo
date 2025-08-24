@@ -54,6 +54,7 @@ void uart_parse(uint8_t b) {
             if (b == ISP_PKT_HEAD) {
                 ctx.len = 0;
                 ctx.sum = b;
+                rx.buf[ctx.len++] = b;
                 ctx.state = ISP_PARSE_STATE_LENGTH;
             }
             break;
@@ -65,7 +66,7 @@ void uart_parse(uint8_t b) {
         case ISP_PARSE_STATE_BODY:
             rx.buf[ctx.len++] = b;
             ctx.sum += b;
-            if (rx.pkt.len + 1 == ctx.len) {  // 协议里len不包括len本身，但我的packet里包括了，所以这里+1
+            if (rx.pkt.len + 2 == ctx.len) {  // // 协议里len不包括head, len，但ctx->len里包括了，所以这里+2
                 ctx.state = ISP_PARSE_STATE_END;
             }
             break;
@@ -85,7 +86,7 @@ void uart_parse(uint8_t b) {
             }
             break;
         case ISP_PARSE_STATE_CHECKSUM:
-            if (b == -ctx.sum) {
+            if (b == (uint8_t)-ctx.sum) {
                 ctx.state = ISP_PARSE_STATE_IDLE;
                 isp_parse_ok = true;
             } else {

@@ -108,3 +108,5 @@ Program Size: data=24.1 xdata=514 const=0 code=1277
 Program Size: data=24.1 xdata=514 const=0 code=1303
 Program Size: data=24.1 xdata=514 const=0 code=1294
 Program Size: data=24.1 xdata=514 const=0 code=1474
+Program Size: data=24.1 xdata=514 const=0 code=1474
+Program Size: data=24.1 xdata=514 const=0 code=1538
