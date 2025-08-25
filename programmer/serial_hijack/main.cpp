@@ -57,8 +57,6 @@ int main(int argc, char* argv[]) {
 
     a.connect(&serial1, &QSerialPort::readyRead, [&serial1, &serial2]() {
         auto all = serial1.readAll();
-        static QByteArray buf{};
-        buf += all;
         qDebug().noquote() << "B:" << bytes2string(all);
         serial2.write(all);
     });

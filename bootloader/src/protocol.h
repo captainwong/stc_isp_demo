@@ -13,7 +13,7 @@
  *   len: length of the packet body, from `cmd` to last byte of `data`
  *   cmd: command code
  *     - A0: Connect, bootloader should reply with its version
- *     - A1: Read byte
+ *     - A1: Read bytes
  *     - A2: Program bytes
  *     - A3: Erase ALL eeprom
  *     - A4: Reboot
