@@ -40,7 +40,7 @@
 #endif  // __C51__
 #endif  // UNUSED
 
-#if defined(VSCODE)
+#if defined(VSCODE) && !defined(_MSC_VER) && !defined(GNUC)
 // make vscode happy
 // in the .vscode/c_cpp_properties.json, add "defines": ["VSCODE"]
 // to suppress the errors/warnings
@@ -83,6 +83,18 @@
 #define USING(n) __using(n)
 #define declare_sfr(addr, name) __sfr __at(addr) name
 #define declare_sbit(base, pin, name) __sbit __at(base + pin) name
+#else
+// now maybe using MSVC or GCC
+#define sfr unsigned char
+#define sbit bool
+#define bit bool
+#define reentrant
+#define INTERRUPT(n)
+#define USING(n)
+#define declare_sfr(addr, name)
+#define declare_sbit(base, pin, name)
+#define __xdata
+#define __at(addr)
 #endif  // VSCODE
 
 // armclang v6 `gmtime` always return NULL
@@ -175,20 +187,6 @@ typedef unsigned char bool;
 #if defined(__C51__) && defined(EMB_ENABLE_STDIO)
 #define EMB_ENABLE_CUSTOM_STDIO
 #include "emb_stdio.h"
-#endif
-
-#if !defined(__C51__) && !defined(VSCODE)
-// now maybe using MSVC or GCC
-#define sfr unsigned char
-#define sbit bool
-#define bit bool
-#define reentrant
-#define INTERRUPT(n)
-#define USING(n)
-#define declare_sfr(addr, name)
-#define declare_sbit(base, pin, name)
-#define __xdata
-#define __at(addr)
 #endif
 
 #endif /* __EMB_CONFIG_H__ */
