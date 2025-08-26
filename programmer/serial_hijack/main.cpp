@@ -1,3 +1,15 @@
+/**
+ * physical connection example:
+ * 
+ * STC CHIP TX <--> COM_REAL CH340 RX
+ * STC CHIP RX <--> COM_REAL CH340 TX
+ * 
+ * FAKE_A CH340 TX <--> FAKE_B CH340 RX
+ * FAKE_A CH340 RX <--> FAKE_B CH340 TX
+ * 
+ * FAKE_B CH340: opened by STC-ISP(用户版)
+ */
+
 #include <QByteArray>
 #include <QDebug>
 #include <QSerialPort>
