@@ -31,7 +31,7 @@ done
 
 # patch libstc/c51io/c51io.sh
 # replace `CC="/e/local_program/tcc-0.9.27-win64-bin/tcc/tcc.exe"` with `CC="${CURRENT_DIR}/../../../tcc-0.9.27-win64-bin/tcc/tcc.exe"`
-sed -i 's|CC="/e/local_program/tcc-0.9.27-win64-bin/tcc/tcc.exe"|CC="${CURRENT_DIR}/../../../tcc-0.9.27-win64-bin/tcc/tcc.exe"|' ${dst_dir}/libstc/c51io/c51io.sh
+# sed -i 's|CC="/e/local_program/tcc-0.9.27-win64-bin/tcc/tcc.exe"|CC="${CURRENT_DIR}/../../../tcc-0.9.27-win64-bin/tcc/tcc.exe"|' ${dst_dir}/libstc/c51io/c51io.sh
 # replace `-I"H:/dev_hb/libhb" \` with `-I"../libhb" \`
-sed -i 's|-I"H:/dev_hb/libhb" |-I"../libhb" |' ${dst_dir}/libstc/c51io/c51io.sh
+# sed -i 's|-I"H:/dev_hb/libhb" |-I"../libhb" |' ${dst_dir}/libstc/c51io/c51io.sh
 

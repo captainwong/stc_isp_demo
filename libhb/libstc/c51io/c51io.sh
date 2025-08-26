@@ -4,11 +4,21 @@ set -e
 
 CURRENT_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 
-CC="${CURRENT_DIR}/../../../tcc-0.9.27-win64-bin/tcc/tcc.exe"
+# check if TCC defined
+if [ -z "$TCC" ]; then
+    echo "'TCC' is not defined. Please set 'TCC' to the path of your TCC compiler."
+    exit 1
+fi
 
-# check if CC exists
-if [ ! -x "$CC" ]; then
-    echo "C compiler '$CC' does not exist or is not executable. Please check the path."
+# check if TCC exists and executable
+if [ ! -x "$TCC" ]; then
+    echo "TCC compiler '$TCC' does not exist or is not executable. Please check the path."
+    exit 1
+fi
+
+# check if LIBHB_DIR is defined
+if [ -z "$LIBHB_DIR" ]; then
+    echo "'LIBHB_DIR' is not defined. Please set 'LIBHB_DIR' to the path of your libhb directory."
     exit 1
 fi
 
@@ -37,8 +47,8 @@ if [ ! -f "$sys_h" ]; then
     exit 1
 fi
 
-$CC -I"$SYS_DIR" \
-    -I"../libhb" \
+$TCC -I"$SYS_DIR" \
+    -I"$LIBHB_DIR" \
     -DVSCODE \
     ${NEW_DEFINES} \
     -run \

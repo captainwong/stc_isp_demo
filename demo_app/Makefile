@@ -14,6 +14,7 @@ CLASSES ?=
 
 LIBHB_DIR=../libhb
 
+TCC="../tcc-0.9.27-win64-bin/tcc/tcc.exe"
 SYS_DIR="./src/sys"
 SYS_H:=${SYS_DIR}/sys.h
 GPIO_H:=${SYS_DIR}/gpio.h
@@ -48,7 +49,7 @@ vpath %.asm $(sort $(dir $(ASM_SOURCES)))
 all: prepare $(BUILD_DIR)/$(TARGET).hex
 
 gen_gpio_h:
-	@(SYS_DIR=$(SYS_DIR) DEFINES="${C51IOSH_DEFINES}" ${C51IOSH})
+	@(TCC=${TCC} LIBHB_DIR="${LIBHB_DIR}" SYS_DIR="${SYS_DIR}" DEFINES="${C51IOSH_DEFINES}" ${C51IOSH})
 
 $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET)
 	@echo "generating hex file..."

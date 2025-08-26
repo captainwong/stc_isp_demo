@@ -40,11 +40,13 @@
 #endif  // __C51__
 #endif  // UNUSED
 
-#if defined(VSCODE) && !defined(_MSC_VER) && !defined(GNUC)
+#if defined(VSCODE)
 // make vscode happy
 // in the .vscode/c_cpp_properties.json, add "defines": ["VSCODE"]
 // to suppress the errors/warnings
+#ifndef __cplusplus
 #define data
+#endif
 #define xdata
 #define bdata
 #define idata

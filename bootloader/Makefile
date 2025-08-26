@@ -13,7 +13,7 @@ comma := ,
 DEBUG ?= 0
 
 LIBHB_DIR=../libhb
-
+TCC="/e/local_program/tcc-0.9.27-win64-bin/tcc/tcc.exe"
 SYS_DIR="./src/sys"
 SYS_H:=${SYS_DIR}/sys.h
 GPIO_H:=${SYS_DIR}/gpio.h
@@ -27,7 +27,7 @@ DEFINES+=,DEBUG
 endif
 
 # MODP2 开启双DPTR，待测试，不确定效果
-CFLAGS=SYMBOLS CODE DEBUG OBJECTEXTEND OMF2 OPTIMIZE(8,SPEED) BROWSE INCDIR(${INC_DIR}) DEFINE(${DEFINES}) SMALL
+CFLAGS=SYMBOLS CODE DEBUG OBJECTEXTEND OMF2 OPTIMIZE(9,SPEED) BROWSE INCDIR(${INC_DIR}) DEFINE(${DEFINES}) SMALL
 BUILD_DIR=./output
 ASFLAGS=SET (SMALL) DEBUG EP
 TARGET=BOOTLOADER
@@ -51,7 +51,7 @@ vpath %.asm $(sort $(dir $(ASM_SOURCES)))
 all: prepare $(BUILD_DIR)/$(TARGET).hex
 
 gen_gpio_h:
-	@(SYS_DIR=$(SYS_DIR) DEFINES="${C51IOSH_DEFINES}" ${C51IOSH})
+	@(TCC=${TCC} LIBHB_DIR="${LIBHB_DIR}" SYS_DIR="${SYS_DIR}" DEFINES="${C51IOSH_DEFINES}" ${C51IOSH})
 
 $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET)
 	@echo "generating hex file..."

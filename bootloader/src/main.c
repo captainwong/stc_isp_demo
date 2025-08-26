@@ -113,7 +113,7 @@ void isp_handle(void) {
             }
             break;
         case ISP_CMD_ERASE:
-            for (addr = 0; addr < LDR_IAP_ADDR_MAX; addr += IAP_PAGE_SIZE) {
+            for (addr = 0; addr < IAP_ADDR_MAX; addr += IAP_PAGE_SIZE) {
                 if (!iap_erase_page_check(addr)) {
                     tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
                     break;

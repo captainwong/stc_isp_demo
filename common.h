@@ -19,7 +19,7 @@
 
 #define LDR_SIZE 0x1000     // bootloader flash space = 4KB
 #define LDR_VERSION 0x0100  // bootloader version 1.0
-#define LDR_IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE)
+#define IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE)
 
 #define DFU_TAG 0x12ABCD34UL  // force DFU mode
 #define DFU_ADDR (STC_RAM_SIZE - sizeof(DFU_TAG))

@@ -30,6 +30,9 @@
         "xlocmon": "cpp",
         "xlocnum": "cpp",
         "xloctime": "cpp",
-        "qserialportinfo": "cpp"
+        "qserialportinfo": "cpp",
+        "stc8h.h": "c",
+        "emb_config.h": "c",
+        "STC8H.H": "cpp"
     }
 }
