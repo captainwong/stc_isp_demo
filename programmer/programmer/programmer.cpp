@@ -103,6 +103,9 @@ programmer::programmer(QWidget* parent)
     btnPatch = new QPushButton(tr("Patch"), grpE2);
     btnPatch->setToolTip(tr("Patch USER_APP hex file"));
     connect(btnPatch, &QPushButton::clicked, this, &programmer::slotPatch);
+    btnMerge = new QPushButton(tr("Merge"), grpE2);
+    btnMerge->setToolTip(tr("Merge BOOTLOADER and USER_APP to one hex file for AiCube-ISP"));
+    connect(btnMerge, &QPushButton::clicked, this, &programmer::slotMerge);
 
     auto e2BtnLine = new QHBoxLayout();
     e2BtnLine->addWidget(lblRomSize);
@@ -114,6 +117,7 @@ programmer::programmer(QWidget* parent)
     e2BtnLine->addWidget(lblTotalRomSize);
     e2BtnLine->addWidget(btnOpen);
     e2BtnLine->addWidget(btnPatch);
+    e2BtnLine->addWidget(btnMerge);
 
     auto e2layout = new QVBoxLayout();
     e2layout->addWidget(view, 1);
@@ -427,7 +431,7 @@ void programmer::slotOpen() {
 }
 
 void programmer::slotPatch() {
-    size_t ldr_size = cmbBootloaderSize->currentText().toUInt() * 1024;
+    uint16_t ldr_size = (cmbBootloaderSize->currentText().toUInt() * 1024) & 0xFFFF;
     if (ldr_size >= (size_t)e2.size()) {
         QMessageBox::critical(this, tr("Error"), tr("Bootloader size exceeds or equals to ROM size"));
         return;
@@ -456,6 +460,127 @@ void programmer::slotPatch() {
     } else {
         disasmOutput->setPlainText(QString::fromStdString(result));
     }
+}
+
+void programmer::slotMerge() {
+    uint16_t ldr_size = (cmbBootloaderSize->currentText().toUInt() * 1024) & 0xFFFF;
+
+    const QString supportedFormats = "Hex80 Files (*.hex);;All Files (*.*)";
+    QString dir{};
+#ifdef _DEBUG
+    {
+        QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+        d.cdUp();
+        d.cdUp();
+        dir = d.absolutePath() + "/bootloader/output";
+    }
+#endif
+
+    QString bootloader, userapp, allin1;
+    std::vector<hex80_code_snippet_t> ldr_snippets, user_snippets, allin1_snippets;
+
+    bootloader = QFileDialog::getOpenFileName(this, tr("Open Bootloader Hex File"), dir, supportedFormats);
+    if (bootloader.isEmpty()) {
+        return;
+    }
+    QFile file1(bootloader);
+    if (!file1.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open bootloader hex file"));
+        return;
+    }
+    QByteArray dat1 = file1.readAll();
+    if (dat1.length() > E2_MAX_SIZE) {
+        QMessageBox::critical(this, tr("Error"), tr("ROM space exceeded 64KB"));
+        return;
+    }
+    if (!tryParseHex80File(dat1.toStdString(), ldr_snippets) ||
+        ldr_snippets.empty() ||
+        ldr_snippets.back().addr + ldr_snippets.back().dat.size() > ldr_size) {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
+        return;
+    }
+
+#ifdef _DEBUG
+    {
+        QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+        d.cdUp();
+        d.cdUp();
+        dir = d.absolutePath() + "/demo_app/output";
+    }
+#endif
+    userapp = QFileDialog::getOpenFileName(this, tr("Open User Application Hex File"), dir, supportedFormats);
+    if (userapp.isEmpty()) {
+        return;
+    }
+
+    QFile file2(userapp);
+    if (!file2.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open user application hex file"));
+        return;
+    }
+    QByteArray dat2 = file2.readAll();
+    if (dat2.length() > E2_MAX_SIZE) {
+        QMessageBox::critical(this, tr("Error"), tr("ROM space exceeded 64KB"));
+        return;
+    }
+    if (!tryParseHex80File(dat2.toStdString(), user_snippets) ||
+        user_snippets.size() < 2 ||            // at least 2 snippets
+        user_snippets[0].addr != 0x0000 ||     // make sure first snippet starts at 0x0000
+        (user_snippets[0].dat.size() != 3) ||  // make sure first instruction is LJMP addr16
+        (user_snippets[0].dat[0] != 0x02) ||   // make sure first instruction is LJMP, and addr16 is bigger than ldr_size + 3
+        ((user_snippets[0].dat[1] << 8) | (user_snippets[0].dat[2])) < ldr_size + 3) {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
+        return;
+    }
+
+    user_snippets[0].addr += ldr_size;  // move the first user app instruction to user rom space
+    std::copy(ldr_snippets.begin(), ldr_snippets.end(), std::back_inserter(allin1_snippets));
+    std::copy(user_snippets.begin(), user_snippets.end(), std::back_inserter(allin1_snippets));
+    std::string result;
+    size_t e2size = 0;
+    for (const auto& snippet : allin1_snippets) {
+        int r = disasm(snippet.addr, snippet.dat.data(), snippet.dat.size(), result);
+        if (r < 0) {
+            QMessageBox::critical(this, tr("Error"), tr("Disassembly failed"));
+            return;
+        }
+        if (e2size < snippet.addr + snippet.dat.size()) {
+            e2size = snippet.addr + snippet.dat.size();
+        }
+    }
+
+    if (e2size > E2_MAX_SIZE) {
+        QMessageBox::critical(this, tr("Error"), tr("ROM space exceeded 64KB"));
+        return;
+    }
+
+    // copy snippets to e2
+    e2.resize(e2size);
+    e2.fill(cmbFiller->currentData().toUInt() & 0xFF);
+    for (const auto& snippet : allin1_snippets) {
+        std::copy(snippet.dat.begin(), snippet.dat.end(), e2.begin() + snippet.addr);
+    }
+
+    doc->setData(e2);
+    disasmOutput->setPlainText(QString::fromStdString(result));
+    pb->setRange(0, e2.size());
+    pb->setValue(0);
+    leRomSize->setText(QString::number(e2.size()));
+
+    allin1 = QFileDialog::getSaveFileName(this, tr("Save Merged Hex File"), dir + "/allin1.hex", supportedFormats);
+    if (allin1.isEmpty()) {
+        return;
+    }
+
+    QFile file(allin1);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open all-in-one hex file for writing"));
+        return;
+    }
+    file.write(e2);
+    file.close();
+
+    QMessageBox::information(this, tr("Success"), tr("All-in-one hex file saved successfully"));
 }
 
 void programmer::slotClearOutput() {

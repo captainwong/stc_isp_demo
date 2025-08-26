@@ -24,6 +24,7 @@ private slots:
     void slot_serial_parsed(const QByteArray& pkt);
     void slotOpen();
     void slotPatch();
+    void slotMerge();
     void slotClearOutput();
     void slotReadVersion();
     void slotReadChipInfo();
@@ -53,6 +54,7 @@ private:
     QLabel* lblTotalRomSize{};
     QPushButton* btnOpen{};
     QPushButton* btnPatch{};
+    QPushButton* btnMerge{};
 
     QGroupBox* grpDisasm{};
     QPlainTextEdit* disasmOutput{};
