@@ -17,6 +17,8 @@
 #define PORT_COUNT 4
 #define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
 
+// 开天斧板子P1.3被NTC测温电路占用了
+
 #define GPIO_TABLES_MAP(XX)                       \
     XX(2, 0, io_pup, LED_RUN)    /* 运行指示灯 */ \
     XX(2, 1, io_pup, LED_DEBUG1) /* 调试指示灯 */ \
