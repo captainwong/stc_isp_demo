@@ -3,7 +3,7 @@
 #ifndef __GPIO_H__
 #define __GPIO_H__
 
-#include "sys.h"
+#include <sys/sys.h>
 
 #define gpio_init()                  \
     do {                             \

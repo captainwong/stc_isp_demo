@@ -1,5 +1,7 @@
+#include <bsp/norflash.h>
+#include <sys/gpio.h>
+
 #include "protocol.h"
-#include "sys/gpio.h"
 #include "uart.h"
 
 uint32_t xdata dfutag __at(DFU_ADDR);
@@ -41,11 +43,17 @@ void main() {
     pin_pu(3, 5);
     uart_init();
 
+    while (!norflash_init()) {
+        debugf1("Norflash init failed");
+        delay_ms(1000);
+    }
+    debugf3("Norflash init ok, type=%04X, %s", norflash_type, norflash_get_type_string());
     debugf2("dfutag=%08X", dfutag);
     debugf4("first 3 byte: %02bX %02bX %02bX",
             *(uint8_t code *)(LDR_SIZE),
             *(uint8_t code *)(LDR_SIZE + 1),
             *(uint8_t code *)(LDR_SIZE + 2));
+
 
     if ((dfutag != DFU_TAG) &&
         (*(uint8_t code *)(LDR_SIZE) == 0x02) &&               // check if first op code is `LJMP addr16`

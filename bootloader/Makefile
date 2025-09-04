@@ -20,7 +20,7 @@ GPIO_H:=${SYS_DIR}/gpio.h
 C51IOSH_DEFINES=
 C51IOSH="${LIBHB_DIR}/libstc/c51io/c51io.sh"
 
-INC_DIR=${LIBHB_DIR};${LIBHB_DIR}/libemb;${LIBHB_DIR}/libstc;src;src/sys
+INC_DIR=${LIBHB_DIR};${LIBHB_DIR}/libemb;${LIBHB_DIR}/libstc;src
 DEFINES=WHAT_EVER_YOU_WANT_TO_DEFINE_HERE
 ifeq ($(DEBUG), 1)
 DEFINES+=,DEBUG
@@ -34,9 +34,12 @@ TARGET=BOOTLOADER
 
 C_SOURCES= \
 ${LIBHB_DIR}/libstc/stc8h.c \
+src/sys/sys.c \
 src/main.c \
 src/uart.c \
-src/protocol.c
+src/protocol.c \
+src/bsp/spi.c \
+src/bsp/norflash.c
 
 ASM_SOURCES= \
 src/isr.asm

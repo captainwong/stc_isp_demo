@@ -1,7 +1,7 @@
 #ifndef __UART_H__
 #define __UART_H__
 
-#include "sys/sys.h"
+#include <sys/sys.h>
 #include "protocol.h"
 
 extern isp_pkt_parse_context_t ctx;

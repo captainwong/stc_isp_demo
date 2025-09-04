@@ -179,11 +179,12 @@ declare_sbit(P2, 5, P25);  // P2.5
 declare_sbit(P2, 6, P26);  // P2.6
 declare_sbit(P2, 7, P27);  // P2.7
 
-declare_sfr(0xA7, DID);        // 芯片版本，如A,B,C,D等，0 = A, 1 = B, ...,读之前须先设置 IAP_ADDRL=2
 declare_sfr(0xA1, BUS_SPEED);  // Bus Speed Control, Reset Value = 00xx,x000
 declare_sfr(0xA2, P_SW1);      // Port Switch Control, Reset Value = nn00,000x
 #define S1_S_MASK 0xC0         // P_SW1[7:6] = S1_S, 串口1功能脚切换
-#define SPI_S_MASK 0x60        // P_SW1[3:2] = SPI_S, SPI功能脚切换
+#define SPI_S_MASK 0x0C        // P_SW1[3:2] = SPI_S, SPI功能脚切换
+
+declare_sfr(0xA7, DID);       // 芯片版本，如A,B,C,D等，0 = A, 1 = B, ...,读之前须先设置 IAP_ADDRL=2
 
 declare_sfr(0xA8, IE);        // Interrupt Enable, Reset Value = 0000,0000
 declare_sbit(0xA8, 7, EA);    // 中断允许总控制位
@@ -1074,6 +1075,9 @@ declare_sfr(0xFF, RSTCFG);  // Reset Configuration Register, Reset Value = x0x0,
 #define HSPWMB_ADR (*(unsigned char volatile xdata *)0xFBF5)
 #define HSPWMB_DAT (*(unsigned char volatile xdata *)0xFBF6)
 
+#define HSSPI_CFG2 (*(unsigned char volatile xdata *)0xFBF9) // 高速SPI配置寄存器2，Reset Value = x0xx,xxxx
+#define IOSW 0x40 // MISO/MOSI 交换
+
 /////////////////////////////////////////////////
 // FA00H-FAFFH
 /////////////////////////////////////////////////
@@ -1383,6 +1387,16 @@ declare_sfr(0xFF, RSTCFG);  // Reset Configuration Register, Reset Value = x0x0,
 
 #define enable_irq() EA = 1   // 使能全局中断
 #define disable_irq() EA = 0  // 禁用全局中断
+
+////////////////////////////// GFx //////////////////////////////
+
+#define set_gf0() PCON |= GF0          // 置位通用标志位0
+#define clr_gf0() PCON &= ~GF0         // 清除通用标志位0
+#define tst_gf0() ((PCON & GF0) != 0)  // 测试通用标志位0
+
+#define set_gf1() PCON |= GF1          // 置位通用标志位1
+#define clr_gf1() PCON &= ~GF1         // 清除通用标志位1
+#define tst_gf1() ((PCON & GF1) != 0)  // 测试通用标志位1
 
 ////////////////////////////// Timer 0 //////////////////////////////
 
@@ -1902,6 +1916,37 @@ bool iap_write_bytes_check(uint16_t addr, uint8_t *buf, uint16_t len);
 #ifdef __cplusplus
 }
 #endif
+
+//////////////////////// SPI //////////////////////////
+
+/**
+ * | SPI_S[1:0] |    SS     | MOSI | MISO | SCLK |
+ * | ---------- | --------- | ---- | ---- | ---- |
+ * |     00     | P1.2/P5.4 | P1.3 | P1.4 | P1.5 |
+ * |     01     |    P2.2   | P2.3 | P2.4 | P2.5 |
+ * |     10     |    P5.4   | P4.0 | P4.1 | P4.3 |
+ * |     11     |    P3.5   | P3.4 | P3.3 | P3.2 |
+ *
+ * 对于部分没有P1.2的型号，此功能在P5.4上
+ */
+
+// SS = P1.2/P5.4, MOSI = P1.3, MISO = P1.4, SCLK = P1.5
+#define spi_use_p12_p13_p14_p15() P_SW1 &= ~SPI_S_MASK
+
+// SS = P2.2, MOSI = P2.3, MISO = P2.4, SCLK = P2.5
+#define spi_use_p22_p23_p24_p25() P_SW1 = ((P_SW1 & ~SPI_S_MASK) | 0x04)
+
+// SS = P5.4, MOSI = P4.0, MISO = P4.1, SCLK = P4.3
+#define spi_use_p54_p40_p41_p43() P_SW1 = ((P_SW1 & ~SPI_S_MASK) | 0x08)
+
+// SS = P3.5, MOSI = P3.4, MISO = P3.3, SCLK = P3.2
+#define spi_use_p35_p34_p33_p32() P_SW1 |= SPI_S_MASK
+
+// 交换 MOSI 和 MISO
+#define spi_swap_mosi_miso() HSSPI_CFG2 |= IOSW
+
+// 不交换 MOSI 和 MISO
+#define spi_no_swap_mosi_miso() HSSPI_CFG2 &= ~IOSW
 
 //////////////////////// CHIPID //////////////////////////
 

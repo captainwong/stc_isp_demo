@@ -124,7 +124,7 @@ int main() {
 #ifndef __GPIO_H__\n\
 #define __GPIO_H__\n\
 \n\
-#include \"sys.h\"\n\
+#include <sys/sys.h>\n\
 \n\
 #define gpio_init()                  \\\n\
     do {                             \\\n\
