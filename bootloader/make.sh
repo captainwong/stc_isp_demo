@@ -78,8 +78,7 @@ kb_total=`printf_value $kb_total`
 # echo "second kb_total=$kb_total"
 awk_param="{print (\$1 / ${LDR_SIZE_10}) * 100}"
 used=`echo $romsize | awk "$awk_param"`
-printf "ROM size: %d/%d, %.2fKB/%sKB, %.2f%% Full\n" $romsize "${LDR_SIZE_10}" $kb $kb_total $used
-printf "ROM size: %d/%d, %.2fKB/%sKB, %.2f%% Full\n" $romsize "${LDR_SIZE_10}" $kb $kb_total $used >> buildLog.txt
+printf "ROM size: %d/%d, %.2fKB/%sKB, %.2f%% Full\n" $romsize "${LDR_SIZE_10}" $kb $kb_total $used | tee >(cat >&1) >> buildLog.txt
 
 if [ $romsize -gt $LDR_SIZE_10 ]; then
     echo "Error: Bootloader size $romsize exceeds LDR_SIZE $LDR_SIZE_10" >&2
