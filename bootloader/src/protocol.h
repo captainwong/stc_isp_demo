@@ -67,6 +67,11 @@ extern "C" {
 #define ISP_CMD_REBOOT 0xA4
 #define ISP_CMD_READ_CHIP_INFO 0xB0
 #define ISP_CMD_READ_CHIP_VERSION 0xB1
+#define ISP_CMD_READ_W25Q_SIZE 0xB2
+#define ISP_CMD_ERASE_W25Q 0xB3 // erase all
+#define ISP_CMD_ERASE_W25Q_SECTOR 0xB4 // erase 4KB sector
+#define ISP_CMD_READ_W25Q 0xB5
+#define ISP_CMD_PROGRAM_W25Q 0xB6
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
@@ -120,7 +125,13 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_CHIP_INFO 0x80
 #define LDR_STATUS_CHIP_VERSION 0x81
 #define LDR_STATUS_LOG 0x82
-#define LDR_STATUS_ROM 0x83
+#define LDR_STATUS_ROM 0x83 // read ROM response
+#define LDR_STATUS_W25Q_SIZE 0x84
+#define LDR_STATUS_W25Q_ERASE_RES 0x85
+#define LDR_STATUS_W25Q_ERASE_SECTOR_RES 0x86
+#define LDR_STATUS_W25Q_DATA 0x87
+#define LDR_STATUS_W25Q_PROGRAM_RES 0x88
+
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];

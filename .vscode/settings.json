@@ -34,6 +34,7 @@
         "stc8h.h": "c",
         "emb_config.h": "c",
         "STC8H.H": "cpp",
-        "xmemory": "c"
+        "xmemory": "c",
+        "ostream": "cpp"
     }
 }

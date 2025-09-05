@@ -10,7 +10,6 @@ ISR_ASM=${CURRENT_DIR}/src/isr.asm
 
 # parse LDR_SIZE from COMMON_H like `#define LDR_SIZE 0x1000  // bootloader flash space`
 LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})
-
 echo "LDR_SIZE=${LDR_SIZE}"
 
 # convert the LDR_SIZE from `0xXXXX` to `XXXXH`

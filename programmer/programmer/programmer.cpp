@@ -12,8 +12,8 @@
 #include "QHexView/model/buffer/qmemorybuffer.h"
 #include "QHexView/qhexview.h"
 #include "Serial.h"
-#include "disassembler/hex80.h"
-#include "disassembler/intel8051is.h"
+#include <libstc/disassembler/hex80.h>
+#include <libstc/disassembler/intel8051is.h>
 #include "stcutil.h"
 
 constexpr const int COMMON_BAUDS[] = {

@@ -103,20 +103,20 @@
     <ClCompile Include="QHexView\dialogs\hexfinddialog.cpp">
       <Filter>qhexview</Filter>
     </ClCompile>
-    <ClCompile Include="disassembler\hex.cpp">
-      <Filter>disassembler</Filter>
-    </ClCompile>
-    <ClCompile Include="disassembler\hex80.cpp">
-      <Filter>disassembler</Filter>
-    </ClCompile>
-    <ClCompile Include="disassembler\intel8051is.cpp">
-      <Filter>disassembler</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\bootloader\src\protocol.c">
       <Filter>protocol</Filter>
     </ClCompile>
     <ClCompile Include="Serial.cpp">
       <Filter>serial</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libhb\libstc\disassembler\hex.cpp">
+      <Filter>disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libhb\libstc\disassembler\hex80.cpp">
+      <Filter>disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libhb\libstc\disassembler\intel8051is.cpp">
+      <Filter>disassembler</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -176,17 +176,17 @@
     <ClInclude Include="QHexView\model\commands\replacecommand.h">
       <Filter>qhexview</Filter>
     </ClInclude>
-    <ClInclude Include="disassembler\hex.h">
-      <Filter>disassembler</Filter>
-    </ClInclude>
-    <ClInclude Include="disassembler\hex80.h">
-      <Filter>disassembler</Filter>
-    </ClInclude>
-    <ClInclude Include="disassembler\intel8051is.h">
-      <Filter>disassembler</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\bootloader\src\protocol.h">
       <Filter>protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\libhb\libstc\disassembler\hex.h">
+      <Filter>disassembler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\libhb\libstc\disassembler\hex80.h">
+      <Filter>disassembler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\libhb\libstc\disassembler\intel8051is.h">
+      <Filter>disassembler</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

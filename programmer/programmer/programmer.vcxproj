@@ -111,9 +111,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\bootloader\src\protocol.c" />
-    <ClCompile Include="disassembler\hex.cpp" />
-    <ClCompile Include="disassembler\hex80.cpp" />
-    <ClCompile Include="disassembler\intel8051is.cpp" />
+    <ClCompile Include="..\..\libhb\libstc\disassembler\hex.cpp" />
+    <ClCompile Include="..\..\libhb\libstc\disassembler\hex80.cpp" />
+    <ClCompile Include="..\..\libhb\libstc\disassembler\intel8051is.cpp" />
     <ClCompile Include="QHexView\dialogs\hexfinddialog.cpp" />
     <ClCompile Include="QHexView\model\buffer\qdevicebuffer.cpp" />
     <ClCompile Include="QHexView\model\buffer\qhexbuffer.cpp" />
@@ -155,11 +155,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\bootloader\src\protocol.h" />
-    <ClInclude Include="disassembler\hex.h" />
-    <ClInclude Include="disassembler\hex80.h" />
-    <ClInclude Include="disassembler\intel8051is.h" />
     <QtMoc Include="Serial.h" />
     <QtMoc Include="QHexView\dialogs\hexfinddialog.h" />
+    <ClInclude Include="..\..\libhb\libstc\disassembler\hex.h" />
+    <ClInclude Include="..\..\libhb\libstc\disassembler\hex80.h" />
+    <ClInclude Include="..\..\libhb\libstc\disassembler\intel8051is.h" />
     <ClInclude Include="QHexView\model\buffer\qmappedfilebuffer.h" />
     <ClInclude Include="QHexView\model\commands\hexcommand.h" />
     <ClInclude Include="QHexView\model\commands\insertcommand.h" />
