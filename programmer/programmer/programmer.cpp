@@ -46,7 +46,7 @@ programmer::programmer(QWidget* parent)
     setWindowFlags(windowFlags() | Qt::WindowMinimizeButtonHint);
     setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
     setStyleSheet(jlib::qt::dark_mode_stylesheet);
-    setMinimumSize(1200, 800);
+    setMinimumSize(1500, 800);
 
     serial = new Serial(this);
 
@@ -272,7 +272,7 @@ void programmer::slot_serial_error(QSerialPort::SerialPortError serialPortError)
 
 void programmer::slot_serial_parsed(const QByteArray& buf) {
     auto pkt = reinterpret_cast<const ldr_packet_t*>(buf.constData());
-    char sbuf[64];
+    char sbuf[128];
     switch (pkt->pkt.status) {
         case LDR_STATUS_OK:
             if (pkt->pkt.size == 2) {
@@ -280,6 +280,7 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
                          (pkt->pkt.dat[0] << 8) | pkt->pkt.dat[1],
                          pkt->pkt.dat[0], pkt->pkt.dat[1]);
                 leLdrVersion->setText(sbuf);
+                serial->read_ldr_version();
             }
             if (e2sent && e2sent < (size_t)e2.size()) {
                 program();
@@ -289,6 +290,21 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
                 leLdrOutput->moveCursor(QTextCursor::End);
             }
             break;
+        case LDR_STATUS_LDR_VERSION: {
+            uint32_t version = *(uint32_t*)&pkt->pkt.dat[0];
+            uint32_t build = *(uint32_t*)&pkt->pkt.dat[4];
+            version = rev32(version);
+            build = rev32(build);
+            snprintf(sbuf, sizeof(sbuf), "%d.%d.%d", version >> 24, (version >> 16) & 0xFF, version & 0xFFFF);
+            time_t utc = build;
+            struct tm* ptm = gmtime(&utc);
+            char tbuf[64];
+            strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S UTC", ptm);
+            QString sver = sbuf;
+            snprintf(sbuf, sizeof(sbuf), "%08X", build);
+            leLdrVersion->setText(QString("%1, Build: %2 %3").arg(sver).arg(sbuf).arg(tbuf));
+            break;
+        }
         case LDR_STATUS_UNKNOWN_CMD:
             leLdrOutput->moveCursor(QTextCursor::End);
             leLdrOutput->insertPlainText("Unknow CMD\n");
@@ -339,6 +355,9 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             }
             break;
         }
+
+        default:
+            break;
     }
 }
 
@@ -589,7 +608,7 @@ void programmer::slotClearOutput() {
 
 void programmer::slotReadVersion() {
     leLdrVersion->clear();
-    serial->read_ldr_version();
+    serial->connect_ldr();
 }
 
 void programmer::slotReadChipInfo() {

@@ -1,5 +1,7 @@
 #include <bsp/norflash.h>
+#include <sys/build_time.h>
 #include <sys/gpio.h>
+#include <sys/version.h>
 
 #include "protocol.h"
 #include "uart.h"
@@ -95,8 +97,8 @@ void isp_handle(void) {
     switch (rx.pkt.cmd) {
         case ISP_CMD_CONNECT:
             tx.pkt.size = 2;
-            tx.pkt.dat[0] = LDR_VERSION >> 8;
-            tx.pkt.dat[1] = LDR_VERSION;
+            tx.pkt.dat[0] = LDR_VERSION_MAJOR;
+            tx.pkt.dat[1] = LDR_VERSION_MINOR;
             break;
         case ISP_CMD_READ:
             tx.pkt.status = LDR_STATUS_ROM;
@@ -128,6 +130,12 @@ void isp_handle(void) {
             tx.pkt.status = LDR_STATUS_CHIP_VERSION;
             tx.pkt.size = 1;
             tx.pkt.dat[0] = stc_chip_version();
+            break;
+        case ISP_CMD_READ_LDR_VERSION:
+            tx.pkt.status = LDR_STATUS_LDR_VERSION;
+            tx.pkt.size = 8;
+            *(uint32_t *)&tx.pkt.dat[0] = LDR_VERSION;
+            *(uint32_t *)&tx.pkt.dat[4] = LDR_BUILD_TIME;
             break;
         default:
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;

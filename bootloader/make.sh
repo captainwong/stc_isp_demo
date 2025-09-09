@@ -51,6 +51,9 @@ sed -i "s/LDR_SIZE EQU .*/LDR_SIZE EQU ${LDR_SIZE_HEX}/" ${ISR_ASM}
 # sed -i "s|#define APP_SIZE .*|#define APP_SIZE ${app_size}|" ${COMMON_H}
 
 # 2. build bootloader
+utc_timestamp=$(date +%s)
+utc_timestamp="${utc_timestamp}UL"
+echo "#define LDR_BUILD_TIME ${utc_timestamp}" > ${CURRENT_DIR}/src/sys/build_time.h
 time make DEBUG=1 -j
 
 # 3. check bootloader size is not bigger than LDR_SIZE

@@ -38,11 +38,20 @@ void Serial::read_rom(uint16_t addr, uint8_t size) {
     send_tx(&tx);
 }
 
-void Serial::read_ldr_version() {
+void Serial::connect_ldr() {
     isp_packet_t tx = {0};
     tx.pkt.head = ISP_PKT_HEAD;
     tx.pkt.len = 6;
     tx.pkt.cmd = ISP_CMD_CONNECT;
+    isp_pkt_end(&tx) = ISP_PKT_END;
+    send_tx(&tx);
+}
+
+void Serial::read_ldr_version() {
+    isp_packet_t tx = { 0 };
+    tx.pkt.head = ISP_PKT_HEAD;
+    tx.pkt.len = 6;
+    tx.pkt.cmd = ISP_CMD_READ_LDR_VERSION;
     isp_pkt_end(&tx) = ISP_PKT_END;
     send_tx(&tx);
 }

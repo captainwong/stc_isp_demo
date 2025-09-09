@@ -41,8 +41,6 @@
 #define DFU_TAG 0x12ABCD34UL                       // force DFU mode
 #define DFU_ADDR (STC_RAM_SIZE - sizeof(DFU_TAG))  // at the last 4 bytes of RAM space
 
-#define LDR_VERSION 0x0100  // bootloader version 1.0
-
 //////////////////////////// shared pin configuration ////////////////////////////
 
 // 开天斧板子P1.3被NTC测温电路占用了

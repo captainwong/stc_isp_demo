@@ -40,6 +40,7 @@ public:
     Serial(QObject* parent);
 
     void send_reboot();
+    void connect_ldr();
     void read_ldr_version();
     void read_chip_info();
     void read_chip_version();

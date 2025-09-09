@@ -36,6 +36,8 @@
         "STC8H.H": "cpp",
         "xmemory": "c",
         "ostream": "cpp",
-        "common.h": "c"
+        "common.h": "c",
+        "chrono": "c",
+        "typeinfo": "c"
     }
 }

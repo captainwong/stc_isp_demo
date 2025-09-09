@@ -14,7 +14,8 @@
 
 //////////////////// GPIO ////////////////////
 
-#define GPIO_TABLES_MAP(XX)                       \
+#define GPIO_TABLES_MAP(XX)    \
+    SHARED_GPIO_TABLES_MAP(XX) \
     XX(3, 5, io_pup, KEY_REBOOT) /* 重启按键 */
 
 #if !defined(__C51__) || defined(VSCODE)
@@ -22,7 +23,6 @@
 #else
 #define XX(port, pin, mode, name) sbit name = P##port ^ pin;
 #endif
-SHARED_GPIO_TABLES_MAP(XX)
 GPIO_TABLES_MAP(XX)
 #undef XX
 
