@@ -14,7 +14,8 @@
                 "E:/Qt/Qt5.9.8/5.9.8/msvc2015/include/QtMultimedia",
                 "G:/dev_libs",
                 "D:/mdk/C51/INC",
-                "G:/dev_libs/boost_1_70_0"
+                "G:/dev_libs/boost_1_70_0",                
+                "${workspaceFolder}/common"
             ],
             "defines": [
                 "VSCODE",

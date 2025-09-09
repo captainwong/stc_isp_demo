@@ -27,14 +27,6 @@ void delay() {
 #endif
 }
 
-void debug_led(void) {
-    LED_DEBUG1 = ctx.state != ISP_PARSE_STATE_IDLE;
-    LED_DEBUG2 = ctx.state != ISP_PARSE_STATE_LENGTH;
-    LED_DEBUG3 = ctx.state != ISP_PARSE_STATE_BODY;
-    LED_DEBUG4 = ctx.state != ISP_PARSE_STATE_END;
-    LED_DEBUG5 = ctx.state != ISP_PARSE_STATE_CHECKSUM;
-}
-
 void main() {
     delay();
     disable_irq();
@@ -70,7 +62,6 @@ void main() {
     cycles = 0;
 
     while (1) {
-        debug_led();
         if (RI) {
             uint8_t dat;
             RI = 0;

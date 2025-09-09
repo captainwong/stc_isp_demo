@@ -34,12 +34,12 @@ TARGET=BOOTLOADER
 
 C_SOURCES= \
 ${LIBHB_DIR}/libstc/stc8h.c \
+../common/common.c \
 ../common/protocol.c \
-src/sys/sys.c \
+../common/bsp/spi.c \
+../common/bsp/norflash.c \
 src/main.c \
-src/uart.c \
-src/bsp/spi.c \
-src/bsp/norflash.c
+src/uart.c
 
 ASM_SOURCES= \
 src/isr.asm

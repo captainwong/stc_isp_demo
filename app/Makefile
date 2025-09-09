@@ -35,8 +35,11 @@ ASFLAGS=SET (SMALL) DEBUG EP
 TARGET=APP
 
 C_SOURCES= \
-src/main.c \
-../common/protocol.c
+../common/common.c \
+../common/protocol.c \
+../common/bsp/spi.c \
+../common/bsp/norflash.c \
+src/main.c
 
 ASM_SOURCES= 
 
