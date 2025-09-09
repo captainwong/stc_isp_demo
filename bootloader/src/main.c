@@ -46,12 +46,9 @@ void main() {
             *(uint8_t code *)(LDR_SIZE + 1),
             *(uint8_t code *)(LDR_SIZE + 2));
 
-
-    if ((dfutag != DFU_TAG) &&
-        (*(uint8_t code *)(LDR_SIZE) == 0x02) &&               // check if first op code is `LJMP addr16`
-        (*(uint16_t code *)(LDR_SIZE + 1) >= LDR_SIZE + 3)) {  // check if `addr16 >= LDR_SIZE + 3`
-        dfutag = 0;                                            // clear force DFU mode flag
-        ((void(code *)())(LDR_SIZE))();                        // LJMP #LDR_SIZE, from here the CPU is running application code
+    if ((dfutag != DFU_TAG) && is_valid_on_chip_app_program()) {
+        dfutag = 0;                     // clear force DFU mode flag
+        jump_to_on_chip_app_program();  // LJMP #LDR_SIZE, from here the CPU is running application code
     }
 
     // now CPU is running bootloader code

@@ -62,12 +62,8 @@
 //////////////////////////// on-chip flash partition ////////////////////////////
 
 #define LDR_SIZE 0x1000  // bootloader flash space = 4KB
-
+#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE)
 #define IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE)  // when iap erasing page(by bootloader or application), the `addr` must less than this value
-
-//////////////////////////// common functions ////////////////////////////
-
-void delay_ms(uint16_t ms);
 
 //////////////////////////// app info ////////////////////////////
 
@@ -109,5 +105,15 @@ typedef struct {
 #if !defined(__C51__) || defined(VSCODE)
 #pragma pack()
 #endif
+
+//////////////////////////// common functions ////////////////////////////
+
+#define is_valid_on_chip_app_program()                                                                 \
+    ((*(uint8_t code *)(LDR_SIZE) == 0x02) &&            /* check if first op code is `LJMP addr16` */ \
+     (*(uint16_t code *)(LDR_SIZE + 1) >= LDR_SIZE + 3)) /* check if `addr16 >= LDR_SIZE + 3` */
+
+#define jump_to_on_chip_app_program() ((void(code *)())(LDR_SIZE))()
+
+void delay_ms(uint16_t ms);
 
 #endif /* __COMMON_H__ */
