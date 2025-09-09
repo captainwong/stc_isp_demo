@@ -362,7 +362,7 @@ void programmer::slotOpen() {
     MYQDEBUG << d.absolutePath();
     d.cdUp();
     MYQDEBUG << d.absolutePath();
-    dir = d.absolutePath() + "/demo_app/output";
+    dir = d.absolutePath() + "/app/output";
     MYQDEBUG << dir;
 #endif
 
@@ -505,7 +505,7 @@ void programmer::slotMerge() {
         QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
         d.cdUp();
         d.cdUp();
-        dir = d.absolutePath() + "/demo_app/output";
+        dir = d.absolutePath() + "/app/output";
     }
 #endif
     userapp = QFileDialog::getOpenFileName(this, tr("Open User Application Hex File"), dir, supportedFormats);

@@ -4,7 +4,7 @@
 #include <QSerialPort>
 #include <stdio.h>
 
-#include "../../bootloader/src/protocol.h"
+#include "../../common/protocol.h"
 
 #define qdebug_qbytes(origin)                               \
     do {                                                    \

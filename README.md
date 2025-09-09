@@ -135,7 +135,7 @@ Let's take a look at `USER_APP.HEX`:
 The first generated instruction is at `0000H`, with machine code `02 100EH`. As mentioned earlier, this can be analogized to `STM32`'s `Reset_Handler`, but the 51 series does not consider `0000H` as the reset interrupt entry address; it is merely the fetch address for the first instruction upon power-on.
 `100EH` contains the content of `STARTUP.A51`.
 
-You can see `1003H` is the `INT0` interrupt. Since `DEMO_APP` does not implement this interrupt, it points to an incorrect address `0800H`. It is unclear how `C51` handles this.
+You can see `1003H` is the `INT0` interrupt. Since `APP` does not implement this interrupt, it points to an incorrect address `0800H`. It is unclear how `C51` handles this.
 `100BH` is the `TIMER 0` interrupt, correctly pointing to `111B`.
 
 This `HEX` file with offset distribution cannot be directly used for burning by the `BOOTLOADER`. The `BOOTLOADER`'s `IAP` operation base address is `0`, which will be mapped to the actual `FLASH` space at `LDR_SIZE`. Therefore, the `HEX` must first be converted to `bin` format, and the code at `0000H` (`02 10 0E`) moved to `1000H`, combined with the subsequent content, and then shifted forward by `1000H` as a whole to obtain the `bin` data suitable for burning.
@@ -144,7 +144,7 @@ This `HEX` file with offset distribution cannot be directly used for burning by 
 
 With the theory and protocol in place, you can write your own programming software, though it can only be used when the `BOOTLOADER` program has already been burned (by `AiCube-ISP` ).
 
-Click `Open` to open `DEMO_APP.HEX`. After conversion to `bin`, the distribution is as follows:
+Click `Open` to open `APP.HEX`. After conversion to `bin`, the distribution is as follows:
 
 ![step1](./img/image2.png)
 

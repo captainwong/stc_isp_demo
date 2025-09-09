@@ -60,11 +60,13 @@ extern "C" {
 
 #define ISP_PKT_HEAD '#'
 #define ISP_PKT_END '$'
+// A* programmer <--> bootloader
 #define ISP_CMD_CONNECT 0xA0
 #define ISP_CMD_READ 0xA1
 #define ISP_CMD_PROGRAM 0xA2
 #define ISP_CMD_ERASE 0xA3
 #define ISP_CMD_REBOOT 0xA4
+// B* programmer <--> bootloader/app
 #define ISP_CMD_READ_CHIP_INFO 0xB0
 #define ISP_CMD_READ_CHIP_VERSION 0xB1
 #define ISP_CMD_READ_W25Q_SIZE 0xB2

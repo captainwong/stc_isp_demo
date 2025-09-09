@@ -3,7 +3,7 @@
 #ifndef __GPIO_H__
 #define __GPIO_H__
 
-#include "sys.h"
+#include <sys/sys.h>
 
 #define gpio_init()                  \
     do {                             \
@@ -14,7 +14,7 @@
         P2M0 = 0x00; /* 0000,0000 */ \
         P2M1 = 0xFD; /* 1111,1101 */ \
         P3M0 = 0x00; /* 0000,0000 */ \
-        P3M1 = 0xFB; /* 1111,1011 */ \
+        P3M1 = 0xF8; /* 1111,1000 */ \
     } while (0)
 
 #endif /* __GPIO_H__ */

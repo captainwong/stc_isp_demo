@@ -5,9 +5,7 @@
 #include <libstc/stc_helpers.h>
 #include <string.h>
 
-#include "../../../common.h"
-
-#define T1MS (65536 - MAIN_Fosc / 1000)
+#include "../../../common/common.h"
 
 #define UART1_BAUD 115200UL
 // #define UART1_BAUD 230400UL
@@ -18,8 +16,10 @@
 #define PORT_COUNT 4
 #define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
 
-#define GPIO_TABLES_MAP(XX)                     \
-    XX(2, 1, io_pup, LED_RUN)  /* 运行指示灯 */ \
+#define GPIO_TABLES_MAP(XX)                    \
+    XX(2, 1, io_pup, LED_RUN) /* 运行指示灯 */ \
+    XX(3, 0, io_pup, RXD)                      \
+    XX(3, 1, io_pup, TXD)                      \
     XX(3, 2, io_pup, KEY_BOOT) /* 烧录按键 */
 
 #if !defined(__C51__) || defined(VSCODE)

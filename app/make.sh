@@ -5,7 +5,7 @@ set -e
 CURRENT_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd ${CURRENT_DIR}
 
-COMMON_H=${CURRENT_DIR}/../common.h
+COMMON_H=${CURRENT_DIR}/../common/common.h
 
 # parse LDR_SIZE from COMMON_H like `#define LDR_SIZE 0x1000  // bootloader flash space`
 LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})

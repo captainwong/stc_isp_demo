@@ -6,8 +6,8 @@ CURRENT_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd ${CURRENT_DIR}
 
 CRC=${CURRENT_DIR}/../programmer/Release/crc.exe
-APP_HEX=${CURRENT_DIR}/../demo_app/output/DEMO_APP.hex
-COMMON_H=${CURRENT_DIR}/../common.h
+APP_HEX=${CURRENT_DIR}/../app/output/APP.hex
+COMMON_H=${CURRENT_DIR}/../common/common.h
 ISR_ASM=${CURRENT_DIR}/src/isr.asm
 LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})
 STC_RAM_SIZE=$(grep -oP '#define STC_RAM_SIZE \K[0x0-9A-F]+' ${COMMON_H})

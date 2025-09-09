@@ -2,7 +2,7 @@
 #define __UART_H__
 
 #include <sys/sys.h>
-#include "protocol.h"
+#include <protocol.h>
 
 extern isp_pkt_parse_context_t ctx;
 extern isp_packet_t xdata rx;

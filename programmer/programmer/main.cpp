@@ -2,7 +2,7 @@
 
 #include <QtWidgets/QApplication>
 
-#include "../../bootloader/src/protocol.h"
+#include "../../common/protocol.h"
 #include "programmer.h"
 
 int main(int argc, char *argv[]) {

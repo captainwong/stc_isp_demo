@@ -5,7 +5,7 @@
 #include <libstc/stc_helpers.h>
 #include <string.h>
 
-#include "../../../common.h"
+#include "../../../common/common.h"
 
 // #define UART1_BAUD 9600
 #define UART1_BAUD 115200UL
