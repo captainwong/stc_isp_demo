@@ -13,9 +13,6 @@
 
 //////////////////// GPIO ////////////////////
 
-#define PORT_COUNT 4
-#define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
-
 #define GPIO_TABLES_MAP(XX)                     \
     XX(3, 2, io_pup, KEY_BOOT) /* 烧录按键 */
 

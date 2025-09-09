@@ -14,11 +14,6 @@
 
 //////////////////// GPIO ////////////////////
 
-#define PORT_COUNT 4
-#define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
-
-// 开天斧板子P1.3被NTC测温电路占用了
-
 #define GPIO_TABLES_MAP(XX)                       \
     XX(3, 5, io_pup, KEY_REBOOT) /* 重启按键 */
 

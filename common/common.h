@@ -31,6 +31,11 @@
 
 //////////////////////////// shared pin configuration ////////////////////////////
 
+// 开天斧板子P1.3被NTC测温电路占用了
+
+#define PORT_COUNT 4
+#define DEFAULT_PORT_MODE PORT_MODE_IN_HIZ
+
 #define SHARED_GPIO_TABLES_MAP(XX)              \
     XX(2, 0, io_pup, LED_RUN)  /* 运行指示灯 */ \
     XX(2, 3, io_pup, SPI_MOSI) /* SPI MOSI */   \
