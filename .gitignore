@@ -9,4 +9,5 @@ Release/
 tcc-0.9.27-win64-bin/
 *.zip
 buildLog.txt
+build_time.h
 *.exe
