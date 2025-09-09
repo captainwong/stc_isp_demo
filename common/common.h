@@ -71,7 +71,7 @@ void delay_ms(uint16_t ms);
 
 //////////////////////////// app info ////////////////////////////
 
-#if defined(__C51__) || defined(VSCODE)
+#if !defined(__C51__) || defined(VSCODE)
 #pragma pack(1)
 #endif
 
@@ -106,7 +106,7 @@ typedef struct {
     flash_app_info_t ota2;     // ota application 2 info
 } ota_info_t;
 
-#if defined(__C51__) || defined(VSCODE)
+#if !defined(__C51__) || defined(VSCODE)
 #pragma pack()
 #endif
 

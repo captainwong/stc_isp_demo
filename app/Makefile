@@ -21,7 +21,7 @@ GPIO_H:=${SYS_DIR}/gpio.h
 C51IOSH_DEFINES=
 C51IOSH="${LIBHB_DIR}/libstc/c51io/c51io.sh"
 
-INC_DIR=${LIBHB_DIR};${LIBHB_DIR}/libemb;${LIBHB_DIR}/libstc;src;src/sys;../common
+INC_DIR=${LIBHB_DIR};${LIBHB_DIR}/libemb;${LIBHB_DIR}/libstc;src;../common
 DEFINES=WHAT_EVER_YOU_WANT_TO_DEFINE_HERE
 ifeq ($(DEBUG), 1)
 DEFINES+=,DEBUG
