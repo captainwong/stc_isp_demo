@@ -20,13 +20,6 @@
 // 开天斧板子P1.3被NTC测温电路占用了
 
 #define GPIO_TABLES_MAP(XX)                       \
-    XX(2, 0, io_pup, LED_RUN)    /* 运行指示灯 */ \
-    XX(2, 3, io_pup, SPI_MOSI)   /* SPI MOSI */   \
-    XX(2, 4, io_pup, SPI_MISO)   /* SPI MISO */   \
-    XX(2, 5, io_pup, SPI_SCK)    /* SPI SCK */    \
-    XX(2, 2, io_pup, SPI_NSS)    /* SPI NSS */    \
-    XX(3, 0, io_pup, RXD)                         \
-    XX(3, 1, io_pup, TXD)                         \
     XX(3, 5, io_pup, KEY_REBOOT) /* 重启按键 */
 
 #if !defined(__C51__) || defined(VSCODE)
@@ -34,6 +27,7 @@
 #else
 #define XX(port, pin, mode, name) sbit name = P##port ^ pin;
 #endif
+SHARED_GPIO_TABLES_MAP(XX)
 GPIO_TABLES_MAP(XX)
 #undef XX
 
