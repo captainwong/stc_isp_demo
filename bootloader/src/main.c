@@ -30,12 +30,12 @@ void delay() {
 }
 
 void main() {
-    modetag = MODE_TAG;  // indicate current mode is bootloader mode
     delay();
     disable_irq();
     isp_parse_init(ctx);
     gpio_init();
     pin_pu(3, 5);  // KEY_REBOOT 上拉
+    modetag = MODE_TAG;  // indicate current mode is bootloader mode
     uart_init();
     enable_irq();
     led_run_on();
@@ -47,7 +47,7 @@ void main() {
     }
     debugf3("Norflash init ok, type=%04X, %s", norflash_type, norflash_get_type_string());
     uart_wait_sent();
-    
+
     debugf2("dfutag=%08lX", dfutag);
     uart_wait_sent();
     debugf4("first 3 byte: %02bX %02bX %02bX",
