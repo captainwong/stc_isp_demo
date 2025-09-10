@@ -35,7 +35,7 @@ void main() {
     disable_irq();
     isp_parse_init(ctx);
     gpio_init();
-    pin_pu(3, 5);
+    pin_pu(3, 5);  // KEY_REBOOT 上拉
     uart_init();
     enable_irq();
     led_run_on();
