@@ -38,11 +38,16 @@
 #define MAIN_Fosc 24000000UL
 #define T1MS (65536 - MAIN_Fosc / 1000)  // 1T
 
-#define DFU_ADDR (STC_RAM_SIZE - 4)  // 4 bytes at -4 of RAM space, indicates whether to enter DFU mode
-#define DFU_TAG 0x12ABCD34UL         // 4 bytes tag for force DFU mode, 0 for no DFU mode, 0x12ABCD34 for force DFU mode
+typedef union {
+    uint8_t b;
+    struct {
+        uint8_t dfu : 1;  // whether to enter DFU mode
+        uint8_t ldr : 1;  // whether running in bootloader mode
+        uint8_t resv : 6;
+    } st;
+} system_context_t;
 
-#define MODE_ADDR (STC_RAM_SIZE - 8)  // 4 bytes at -8 of RAM space, indicates current mode
-#define MODE_TAG 0xA55A5AA5UL         // 4 bytes tag for bootloader mode, 0 for application mode, 0x34CDAB12 for bootloader mode
+#define SYSTEM_CONTEXT_ADDR (STC_RAM_SIZE - sizeof(system_context_t))  // at end of RAM space
 
 //////////////////////////// shared pin configuration ////////////////////////////
 

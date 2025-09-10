@@ -5,8 +5,7 @@
 
 #include "uart.h"
 
-uint32_t xdata dfutag __at(DFU_ADDR);
-uint32_t xdata modetag __at(MODE_ADDR);
+system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
 uint16_t counter_1ms = 0;
 
 void isp_handle(void);
@@ -34,7 +33,7 @@ void main() {
     enable_irq();
     led_run_on();
 
-    dfutag = 0;
+    sysctx.st.dfu = 0;
 
     debugf1("App start");
 
@@ -46,7 +45,7 @@ void main() {
         }
 
         if (key_boot_pressed()) {
-            dfutag = DFU_TAG;
+            sysctx.st.dfu = 1;
             sys_reset();
         }
     }

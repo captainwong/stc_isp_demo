@@ -5,8 +5,7 @@
 #include "sys/version.h"
 #include "uart.h"
 
-uint32_t xdata dfutag __at(DFU_ADDR);
-uint32_t xdata modetag __at(MODE_ADDR);
+system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
 uint16_t cycles;
 uint16_t rx_time, rx_timeout;
 
@@ -29,13 +28,23 @@ void delay() {
 #endif
 }
 
+const char *unsafe_u8_to_bits(uint8_t v) {
+    static char bits[9];
+    uint8_t i;
+    for (i = 0; i < 8; i++) {
+        bits[7 - i] = (v & (1 << i)) ? '1' : '0';
+    }
+    bits[8] = '\0';
+    return bits;
+}
+
 void main() {
     delay();
     disable_irq();
     isp_parse_init(ctx);
     gpio_init();
-    pin_pu(3, 5);  // KEY_REBOOT 上拉
-    modetag = MODE_TAG;  // indicate current mode is bootloader mode
+    pin_pu(3, 5);       // KEY_REBOOT 上拉
+    sysctx.st.ldr = 1;  // indicate running in bootloader mode
     uart_init();
     enable_irq();
     led_run_on();
@@ -48,7 +57,7 @@ void main() {
     debugf3("Norflash init ok, type=%04X, %s", norflash_type, norflash_get_type_string());
     uart_wait_sent();
 
-    debugf2("dfutag=%08lX", dfutag);
+    debugf2("sysctx=0b%s", unsafe_u8_to_bits(sysctx.b));
     uart_wait_sent();
     debugf4("first 3 byte: %02bX %02bX %02bX",
             *(uint8_t code *)(LDR_SIZE),
@@ -56,20 +65,20 @@ void main() {
             *(uint8_t code *)(LDR_SIZE + 2));
     uart_wait_sent();
 
-    if ((dfutag != DFU_TAG) && is_valid_on_chip_app_program()) {
+    if (!sysctx.st.dfu && is_valid_on_chip_app_program()) {
         debugf1("Jump to application");
         uart_wait_sent();
         uart_release();
-        dfutag = 0;                      // clear force DFU mode flag
-        modetag = 0;                     // indicate current mode is application mode
+        sysctx.st.dfu = 0;               // clear force DFU mode flag
+        sysctx.st.ldr = 0;               // indicate current mode is application mode
         jump_to_on_chip_app_program(0);  // LJMP #LDR_SIZE, from here the CPU is running application code
     }
 
     // now CPU is running bootloader code
 
     debugf1("bootloader running");
-    dfutag = 0;     // clear force DFU mode flag
-    enable_xsfr();  // for xsfr `IAP_TPS`
+    sysctx.st.dfu = 0;  // clear force DFU mode flag
+    enable_xsfr();      // for xsfr `IAP_TPS`
     iap_tps(iap_calc_tps(MAIN_Fosc));
     cycles = 0;
 

@@ -52,7 +52,7 @@ void uart_release(void) {
 
 void uart1_isr() INTERRUPT(UART1_VECTOR) {
     uint8_t data c;
-    if (modetag == MODE_TAG) {
+    if (sysctx.st.ldr) {
         if (RI) {
             RI = 0;
             c = SBUF;
