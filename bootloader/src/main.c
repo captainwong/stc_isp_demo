@@ -47,6 +47,7 @@ void main() {
     }
     debugf3("Norflash init ok, type=%04X, %s", norflash_type, norflash_get_type_string());
     uart_wait_sent();
+    
     debugf2("dfutag=%08lX", dfutag);
     uart_wait_sent();
     debugf4("first 3 byte: %02bX %02bX %02bX",
@@ -54,6 +55,7 @@ void main() {
             *(uint8_t code *)(LDR_SIZE + 1),
             *(uint8_t code *)(LDR_SIZE + 2));
     uart_wait_sent();
+
     if ((dfutag != DFU_TAG) && is_valid_on_chip_app_program()) {
         debugf1("Jump to application");
         uart_wait_sent();
