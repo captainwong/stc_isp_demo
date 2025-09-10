@@ -19,6 +19,7 @@ libemb/emb_config.h
 libemb/emb_stdint.h
 libemb/emb_time.h
 libemb/emb_version.h
+libemb/ringbuf.h
 libemb/libemb.h
 libstc/c51io/c51io.c
 libstc/c51io/c51io.sh

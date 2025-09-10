@@ -14,8 +14,8 @@
  *   - 512B page erase
  *   - 512B page program
  *   - partition:
- *      - 0x0000 - 0x0FFF : 4KB for bootloader
- *      - 0x1000 - 0xFFFF : 60KB for application
+ *      - 0x0000 - 0x1FFF : 8KB for bootloader
+ *      - 0x2000 - 0xFFFF : 56KB for application
  * norflash: W25Q32JVSIQ (32Mbit, 4MB)
  *   - 4KB sector erase
  *   - 256B page program
@@ -59,7 +59,7 @@
 
 //////////////////////////// on-chip flash partition ////////////////////////////
 
-#define LDR_SIZE 0x1000  // bootloader flash space = 4KB
+#define LDR_SIZE 0x2000  // bootloader flash space = 8KB
 #define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE)
 #define IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE)  // when iap erasing page(by bootloader or application), the `addr` must less than this value
 

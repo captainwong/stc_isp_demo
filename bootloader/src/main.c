@@ -36,9 +36,12 @@ void main() {
     gpio_init();
     pin_pu(3, 5);
     uart_init();
+    enable_irq();
+    led_run_on();
 
     while (!norflash_init()) {
         debugf1("Norflash init failed");
+        led_run_toggle();
         delay_ms(1000);
     }
     debugf3("Norflash init ok, type=%04X, %s", norflash_type, norflash_get_type_string());
@@ -61,16 +64,11 @@ void main() {
     cycles = 0;
 
     while (1) {
-        if (RI) {
-            uint8_t dat;
-            RI = 0;
-            dat = SBUF;
+        uart_run();
+        if (isp_parse_ok) {
+            isp_parse_ok = false;
             rx_time = rx_timeout = cycles;
-            uart_parse(dat);
-            if (isp_parse_ok) {
-                isp_parse_ok = false;
-                isp_handle();
-            }
+            isp_handle();
         }
 
         if (++rx_timeout == rx_time) {  // 转一圈还没有新的数据，说明这一包超时
@@ -93,7 +91,6 @@ void isp_handle(void) {
     tx.pkt.status = LDR_STATUS_OK;
     tx.pkt.size = 0;
 
-    // uart_send(0xAA);
     switch (rx.pkt.cmd) {
         case ISP_CMD_CONNECT:
             tx.pkt.size = 2;

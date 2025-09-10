@@ -9,9 +9,8 @@ extern isp_packet_t xdata rx;
 extern ldr_packet_t xdata tx;
 
 void uart_init(void);
-uint8_t uart_send(uint8_t dat);
 void uart_send_tx(void);
-void uart_parse(uint8_t b);
+void uart_run(void);
 
 #ifdef DEBUG
 void uart_debug(const char* fmt, ...);
