@@ -1,12 +1,12 @@
-#include <bsp/norflash.h>
-#include <sys/build_time.h>
-#include <sys/gpio.h>
-#include <sys/version.h>
-
+#include "bsp/norflash.h"
 #include "protocol.h"
+#include "sys/build_time.h"
+#include "sys/gpio.h"
+#include "sys/version.h"
 #include "uart.h"
 
 uint32_t xdata dfutag __at(DFU_ADDR);
+uint32_t xdata modetag __at(MODE_ADDR);
 uint16_t cycles;
 uint16_t rx_time, rx_timeout;
 
@@ -30,6 +30,7 @@ void delay() {
 }
 
 void main() {
+    modetag = MODE_TAG;  // indicate current mode is bootloader mode
     delay();
     disable_irq();
     isp_parse_init(ctx);
@@ -45,19 +46,26 @@ void main() {
         delay_ms(1000);
     }
     debugf3("Norflash init ok, type=%04X, %s", norflash_type, norflash_get_type_string());
-    debugf2("dfutag=%08X", dfutag);
+    uart_wait_sent();
+    debugf2("dfutag=%08lX", dfutag);
+    uart_wait_sent();
     debugf4("first 3 byte: %02bX %02bX %02bX",
             *(uint8_t code *)(LDR_SIZE),
             *(uint8_t code *)(LDR_SIZE + 1),
             *(uint8_t code *)(LDR_SIZE + 2));
-
+    uart_wait_sent();
     if ((dfutag != DFU_TAG) && is_valid_on_chip_app_program()) {
-        dfutag = 0;                     // clear force DFU mode flag
-        jump_to_on_chip_app_program();  // LJMP #LDR_SIZE, from here the CPU is running application code
+        debugf1("Jump to application");
+        uart_wait_sent();
+        uart_release();
+        dfutag = 0;                      // clear force DFU mode flag
+        modetag = 0;                     // indicate current mode is application mode
+        jump_to_on_chip_app_program(0);  // LJMP #LDR_SIZE, from here the CPU is running application code
     }
 
     // now CPU is running bootloader code
 
+    debugf1("bootloader running");
     dfutag = 0;     // clear force DFU mode flag
     enable_xsfr();  // for xsfr `IAP_TPS`
     iap_tps(iap_calc_tps(MAIN_Fosc));

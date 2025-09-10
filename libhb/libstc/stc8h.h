@@ -184,7 +184,7 @@ declare_sfr(0xA2, P_SW1);      // Port Switch Control, Reset Value = nn00,000x
 #define S1_S_MASK 0xC0         // P_SW1[7:6] = S1_S, 串口1功能脚切换
 #define SPI_S_MASK 0x0C        // P_SW1[3:2] = SPI_S, SPI功能脚切换
 
-declare_sfr(0xA7, DID);       // 芯片版本，如A,B,C,D等，0 = A, 1 = B, ...,读之前须先设置 IAP_ADDRL=2
+declare_sfr(0xA7, DID);  // 芯片版本，如A,B,C,D等，0 = A, 1 = B, ...,读之前须先设置 IAP_ADDRL=2
 
 declare_sfr(0xA8, IE);        // Interrupt Enable, Reset Value = 0000,0000
 declare_sbit(0xA8, 7, EA);    // 中断允许总控制位
@@ -1075,8 +1075,8 @@ declare_sfr(0xFF, RSTCFG);  // Reset Configuration Register, Reset Value = x0x0,
 #define HSPWMB_ADR (*(unsigned char volatile xdata *)0xFBF5)
 #define HSPWMB_DAT (*(unsigned char volatile xdata *)0xFBF6)
 
-#define HSSPI_CFG2 (*(unsigned char volatile xdata *)0xFBF9) // 高速SPI配置寄存器2，Reset Value = x0xx,xxxx
-#define IOSW 0x40 // MISO/MOSI 交换
+#define HSSPI_CFG2 (*(unsigned char volatile xdata *)0xFBF9)  // 高速SPI配置寄存器2，Reset Value = x0xx,xxxx
+#define IOSW 0x40                                             // MISO/MOSI 交换
 
 /////////////////////////////////////////////////
 // FA00H-FAFFH
@@ -1374,6 +1374,8 @@ declare_sfr(0xFF, RSTCFG);  // Reset Configuration Register, Reset Value = x0x0,
 #define DMA_UR4R_VECTOR 57  // 01CBH
 #define DMA_LCM_VECTOR 58   // 01D3H
 #define LCM_VECTOR 59       // 01DBH
+
+#define isr_offset(vector) ((vector) * 8 + 3)  // 中断向量偏移地址
 
 ////////////////////////////// HELPERS //////////////////////////////
 

@@ -39,7 +39,8 @@ C_SOURCES= \
 ../common/protocol.c \
 ../common/bsp/spi.c \
 ../common/bsp/norflash.c \
-src/main.c
+src/main.c \
+src/uart.c
 
 ASM_SOURCES= 
 

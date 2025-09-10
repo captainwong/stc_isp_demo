@@ -38,8 +38,11 @@
 #define MAIN_Fosc 24000000UL
 #define T1MS (65536 - MAIN_Fosc / 1000)  // 1T
 
-#define DFU_TAG 0x12ABCD34UL                       // force DFU mode
-#define DFU_ADDR (STC_RAM_SIZE - sizeof(DFU_TAG))  // at the last 4 bytes of RAM space
+#define DFU_ADDR (STC_RAM_SIZE - 4)  // 4 bytes at -4 of RAM space, indicates whether to enter DFU mode
+#define DFU_TAG 0x12ABCD34UL         // 4 bytes tag for force DFU mode, 0 for no DFU mode, 0x12ABCD34 for force DFU mode
+
+#define MODE_ADDR (STC_RAM_SIZE - 8)  // 4 bytes at -8 of RAM space, indicates current mode
+#define MODE_TAG 0xA55A5AA5UL         // 4 bytes tag for bootloader mode, 0 for application mode, 0x34CDAB12 for bootloader mode
 
 //////////////////////////// shared pin configuration ////////////////////////////
 
@@ -110,7 +113,7 @@ typedef struct {
     ((*(uint8_t code *)(LDR_SIZE) == 0x02) &&            /* check if first op code is `LJMP addr16` */ \
      (*(uint16_t code *)(LDR_SIZE + 1) >= LDR_SIZE + 3)) /* check if `addr16 >= LDR_SIZE + 3` */
 
-#define jump_to_on_chip_app_program() ((void(code *)())(LDR_SIZE))()
+#define jump_to_on_chip_app_program(offset) ((void(code *)())(LDR_SIZE + (offset)))()
 
 void delay_ms(uint16_t ms);
 

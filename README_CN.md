@@ -57,7 +57,7 @@ STC IAP DEMO
 
 `FLASH` 地址划分也是 `AiCube-ISP` 设置的，所以这里先定义好 `LDR_SIZE` 即 `BOOTLOADER` 占用的 `FLASH` 空间大小，方便 `BOOTLOADER` 更新 `isr` 重映射计算和 `USER_APP` 的 `INTVECTOR/CLASSES` 计算.
 
-由于使用了`KEIL`自带的 `STARTUP.A51`, `XDATALEN EQU 0`，所以芯片软复位时不会初始化 `XDATA`，即可以在 `8KB RAM` 的结尾即`DFU_ADDR`处设置一个 `dfuflag`，一旦`USER_APP` 检测到了某个引脚变化、收到了串口指令等任何要触发更新 `USER_APP`的动作，`USER_APP` 即可设置 `dfuflag = DFU_TAG`并复位，`BOOTLOADER` 检测到 `dfuflag == DFU_TAG` 则停留在 `BOOTLOADER` 等待上位机下载指令而暂时不跳转到 `USER_APP`.
+由于使用了`KEIL`自带的 `STARTUP.A51`, `XDATALEN EQU 0`，所以芯片软复位时不会初始化 `XDATA`，即可以在 `8KB RAM` 的结尾即`DFU_ADDR`处设置一个 `dfutag`，一旦`USER_APP` 检测到了某个引脚变化、收到了串口指令等任何要触发更新 `USER_APP`的动作，`USER_APP` 即可设置 `dfutag = DFU_TAG`并复位，`BOOTLOADER` 检测到 `dfutag == DFU_TAG` 则停留在 `BOOTLOADER` 等待上位机下载指令而暂时不跳转到 `USER_APP`.
 
 ## 2. BOOTLOADER
 

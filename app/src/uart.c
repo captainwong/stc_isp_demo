@@ -44,38 +44,35 @@ void uart_init(void) {
     t1_run();
 }
 
-void uart_release(void) {
-    uart1_disable_irq();
-    uart1_disable_recv();
-    t1_stop();
-}
-
 void uart1_isr() INTERRUPT(UART1_VECTOR) {
     uint8_t data c;
-    if (modetag == MODE_TAG) {
-        if (RI) {
-            RI = 0;
-            c = SBUF;
-            if (!ringbuf_writable(rxrb)) {
-                ringbuf_skip(rxrb);
-            }
-            ringbuf_write(rxrb, c);
+    if (RI) {
+        RI = 0;
+        c = SBUF;
+        if (!ringbuf_writable(rxrb)) {
+            ringbuf_skip(rxrb);
         }
+        ringbuf_write(rxrb, c);
+    }
 
-        if (TI) {
-            TI = 0;
-            if (ringbuf_readable(txrb)) {
-                c = txrb.buf[txrb.r];
-                if (++txrb.r == txrb.size) {
-                    txrb.r = 0;
-                }
-                SBUF = c;
-            } else {
-                tx_busy = false;
+    if (TI) {
+        TI = 0;
+        if (ringbuf_readable(txrb)) {
+            c = txrb.buf[txrb.r];
+            if (++txrb.r == txrb.size) {
+                txrb.r = 0;
             }
+            SBUF = c;
+        } else {
+            tx_busy = false;
         }
-    } else {
-        jump_to_on_chip_app_program(isr_offset(UART1_VECTOR));
+    }
+}
+
+void uart_wait_sent(void) {
+    volatile uint16_t data i = UART_WAIT_TIME;
+    while (tx_busy && i--) {
+        // wdt_feed();
     }
 }
 
@@ -86,13 +83,6 @@ uint8_t uart_block_send(uint8_t dat) {
     while (!TI);
     uart1_enable_irq();
     return dat;
-}
-
-void uart_wait_sent(void) {
-    volatile uint16_t data i = UART_WAIT_TIME;
-    while (tx_busy && i--) {
-        // wdt_feed();
-    }
 }
 
 static void uart_send_raw(uint8_t* buf, uint8_t n) {

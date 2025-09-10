@@ -56,7 +56,7 @@ Since the main frequency of `8H8K64U` is set by `AiCube-ISP`, both `BOOTLOADER` 
 
 The `FLASH` address partitioning is also set by `AiCube-ISP`, so here we first define `LDR_SIZE`, i.e., the `FLASH` space occupied by the `BOOTLOADER`, to facilitate `BOOTLOADER` updates, `ISR` remapping calculations, and `USER_APP`'s `INTVECTOR/CLASSES` calculations.
 
-Since `KEIL`'s built-in `STARTUP.A51` is used with `XDATALEN EQU 0`, the `XDATA` is not initialized during a soft reset of the chip. This allows setting a `dfuflag` at the end of the `8KB RAM`, i.e., at `DFU_ADDR`. If the `USER_APP` detects a pin change, receives a serial port instruction, or any other action triggering an update of the `USER_APP`, the `USER_APP` can set `dfuflag = DFU_TAG` and reset. The `BOOTLOADER`, upon detecting `dfuflag == DFU_TAG`, will remain in the `BOOTLOADER` waiting for download instructions from the host computer instead of immediately jumping to the `USER_APP`.
+Since `KEIL`'s built-in `STARTUP.A51` is used with `XDATALEN EQU 0`, the `XDATA` is not initialized during a soft reset of the chip. This allows setting a `dfutag` at the end of the `8KB RAM`, i.e., at `DFU_ADDR`. If the `USER_APP` detects a pin change, receives a serial port instruction, or any other action triggering an update of the `USER_APP`, the `USER_APP` can set `dfutag = DFU_TAG` and reset. The `BOOTLOADER`, upon detecting `dfutag == DFU_TAG`, will remain in the `BOOTLOADER` waiting for download instructions from the host computer instead of immediately jumping to the `USER_APP`.
 
 ## 2. BOOTLOADER
 

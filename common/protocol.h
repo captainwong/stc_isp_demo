@@ -75,6 +75,7 @@ extern "C" {
 #define ISP_CMD_READ_W25Q 0xB5
 #define ISP_CMD_PROGRAM_W25Q 0xB6
 #define ISP_CMD_READ_LDR_VERSION 0xB7 // read bootloader version & build time
+#define ISP_CMD_READ_APP_VERSION 0xB8 // read application version & build time
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
@@ -135,6 +136,7 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_W25Q_DATA 0x87
 #define LDR_STATUS_W25Q_PROGRAM_RES 0x88
 #define LDR_STATUS_LDR_VERSION 0x89
+#define LDR_STATUS_APP_VERSION 0x8A
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];

@@ -33,4 +33,7 @@ GPIO_TABLES_MAP(XX)
 #define key_reboot_pressed() KEY_REBOOT == 0
 #define key_reboot_released() KEY_REBOOT == 1
 
+extern uint32_t xdata dfutag;
+extern uint32_t xdata modetag;
+
 #endif /* __SYS_H__ */

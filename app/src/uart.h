@@ -9,7 +9,6 @@ extern isp_packet_t xdata rx;
 extern ldr_packet_t xdata tx;
 
 void uart_init(void);
-void uart_release(void);
 void uart_send_tx(void);
 void uart_wait_sent(void);
 void uart_run(void);
