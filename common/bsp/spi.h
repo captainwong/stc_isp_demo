@@ -3,8 +3,17 @@
 
 #include <sys/sys.h>
 
-#define spi_select() SPI_NSS = 0
-#define spi_unselect() SPI_NSS = 1
+#define spi_select() \
+    do {             \
+        EA = 0;      \
+        SPI_NSS = 0; \
+    } while (0)
+
+#define spi_unselect() \
+    do {               \
+        SPI_NSS = 1;   \
+        EA = 1;        \
+    } while (0)
 
 void spi_init(void);
 void spi_send(uint8_t dat);

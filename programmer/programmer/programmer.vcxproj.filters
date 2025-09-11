@@ -38,9 +38,6 @@
     <QtRcc Include="programmer.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
-    <QtMoc Include="programmer.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClCompile Include="programmer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -118,6 +115,9 @@
     <ClCompile Include="..\..\common\protocol.c">
       <Filter>protocol</Filter>
     </ClCompile>
+    <ClCompile Include="flash.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="QHexView\qhexview.h">
@@ -152,6 +152,12 @@
     </QtMoc>
     <QtMoc Include="Serial.h">
       <Filter>serial</Filter>
+    </QtMoc>
+    <QtMoc Include="programmer.h">
+      <Filter>Source Files</Filter>
+    </QtMoc>
+    <QtMoc Include="flash.h">
+      <Filter>Source Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>

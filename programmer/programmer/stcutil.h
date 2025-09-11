@@ -63,3 +63,48 @@ inline QString chipInfo2String(stc_chipid_t* id) {
 
     return str;
 }
+
+//     id      type   size(MB)
+#define NORFLASH_TYPES_MAP(XX) \
+    XX(0xEF13, W25Q80, 1)      \
+    XX(0xEF14, W25Q16, 2)      \
+    XX(0xEF15, W25Q32, 4)      \
+    XX(0xEF16, W25Q64, 8)      \
+    XX(0xEF17, W25Q128, 16)    \
+    XX(0xEF18, W25Q256, 32)
+
+inline QString norflashType2String(uint16_t type) {
+    switch (type) {
+#define XX(id, name, sizem) \
+    case id:                \
+        return QString(#name);
+        NORFLASH_TYPES_MAP(XX);
+#undef XX
+        default:
+            return QString("Unknown NOR Flash type: ") + QString::number(type, 16);
+    }
+}
+
+inline size_t norflashType2SizeInBytes(uint16_t type) {
+    switch (type) {
+#define XX(id, name, sizem) \
+    case id:                \
+        return sizem * 1024 * 1024;
+        NORFLASH_TYPES_MAP(XX);
+#undef XX
+        default:
+            return 0;
+    }
+}
+
+inline size_t norflashType2SizeInMBytes(uint16_t type) {
+    switch (type) {
+#define XX(id, name, sizem) \
+    case id:                \
+        return sizem;
+        NORFLASH_TYPES_MAP(XX);
+#undef XX
+        default:
+            return 0;
+    }
+}

@@ -15,6 +15,7 @@
 #include <libstc/disassembler/hex80.h>
 #include <libstc/disassembler/intel8051is.h>
 #include "stcutil.h"
+#include "flash.h"
 
 constexpr const int COMMON_BAUDS[] = {
     1200,
@@ -61,12 +62,15 @@ programmer::programmer(QWidget* parent)
     cmbBaud->setCurrentText(QString::number(DEFAULT_BAUD));
     btnConnect = new QPushButton(tr("Connect"), this);
     connect(btnConnect, &QPushButton::clicked, this, &programmer::slotConnect);
+    btnOpenFlash = new QPushButton(tr("Open Flash"), this);
+    connect(btnOpenFlash, &QPushButton::clicked, this, &programmer::slotOpenFlash);
 
     auto topLayout = new QHBoxLayout();
     topLayout->addWidget(cmbPort, 1);
     topLayout->addWidget(cmbBaud);
     topLayout->addWidget(btnRefresh);
     topLayout->addWidget(btnConnect);
+    topLayout->addWidget(btnOpenFlash);
 
     ////////////////////////////////// rom //////////////////////////////////
     grpE2 = new QGroupBox(tr("ROM"), this);
@@ -706,4 +710,11 @@ void programmer::read_rom() {
         size = 128;
     }
     serial->read_rom((uint16_t)(addr + e2recv), size & 0xFF);
+}
+
+void programmer::slotOpenFlash() {
+    flash dlg(this, serial);
+    auto conn = connect(serial, &Serial::sig_parsed, &dlg, &flash::slot_serial_parsed, Qt::QueuedConnection);
+    dlg.exec();
+    disconnect(conn);
 }

@@ -58,10 +58,10 @@ typedef union {
 
 #define SHARED_GPIO_TABLES_MAP(XX)              \
     XX(2, 0, io_pup, LED_RUN)  /* 运行指示灯 */ \
+    XX(2, 2, io_pup, SPI_NSS)  /* SPI NSS */    \
     XX(2, 3, io_pup, SPI_MOSI) /* SPI MOSI */   \
     XX(2, 4, io_pup, SPI_MISO) /* SPI MISO */   \
     XX(2, 5, io_pup, SPI_SCK)  /* SPI SCK */    \
-    XX(2, 2, io_pup, SPI_NSS)  /* SPI NSS */    \
     XX(3, 0, io_pup, RXD)                       \
     XX(3, 1, io_pup, TXD)
 

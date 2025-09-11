@@ -20,6 +20,7 @@ private slots:
     void slotRefresh();
     void slotConnect();
     void slotDisconnect();
+    void slotOpenFlash();
     void slot_serial_error(QSerialPort::SerialPortError serialPortError);
     void slot_serial_parsed(const QByteArray& pkt);
     void slotOpen();
@@ -42,6 +43,7 @@ private:
     QPushButton* btnRefresh{};
     QComboBox* cmbBaud{};
     QPushButton* btnConnect{};
+    QPushButton* btnOpenFlash{};
 
     ///////////////// rom /////////////////
     QGroupBox* grpE2{};

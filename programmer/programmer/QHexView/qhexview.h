@@ -75,6 +75,7 @@ class QHexView : public QAbstractScrollArea
         void removeComments(qint64 line);
         void unhighlight(qint64 line);
         void clearMetadata();
+        void scrollToAddress(quint64 address);
 
     public Q_SLOTS:
 #if defined(QHEXVIEW_ENABLE_DIALOGS)

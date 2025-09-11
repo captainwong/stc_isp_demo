@@ -116,6 +116,7 @@
     <ClCompile Include="..\..\libhb\libstc\disassembler\hex.cpp" />
     <ClCompile Include="..\..\libhb\libstc\disassembler\hex80.cpp" />
     <ClCompile Include="..\..\libhb\libstc\disassembler\intel8051is.cpp" />
+    <ClCompile Include="flash.cpp" />
     <ClCompile Include="QHexView\dialogs\hexfinddialog.cpp" />
     <ClCompile Include="QHexView\model\buffer\qdevicebuffer.cpp" />
     <ClCompile Include="QHexView\model\buffer\qhexbuffer.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="..\..\libhb\libstc\disassembler\hex.h" />
     <ClInclude Include="..\..\libhb\libstc\disassembler\hex80.h" />
     <ClInclude Include="..\..\libhb\libstc\disassembler\intel8051is.h" />
+    <QtMoc Include="flash.h" />
     <ClInclude Include="QHexView\model\buffer\qmappedfilebuffer.h" />
     <ClInclude Include="QHexView\model\commands\hexcommand.h" />
     <ClInclude Include="QHexView\model\commands\insertcommand.h" />

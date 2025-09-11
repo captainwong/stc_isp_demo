@@ -49,6 +49,12 @@ public:
     void erase_all();
     void program_bin(uint16_t addr, const QByteArray& bin);
 
+    void read_flash_size();
+    void erase_flash();
+    void erase_flash_sector(uint32_t addr);
+    void read_flash(uint32_t addr, uint8_t size);
+    void program_flash(uint32_t addr, const QByteArray& bin);
+
     void send_tx(isp_packet_t* tx);
 
 signals:

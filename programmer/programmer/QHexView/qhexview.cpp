@@ -1208,3 +1208,18 @@ QColor QHexView::getReadableColor(QColor c) const {
 
 QByteArray QHexView::selectedBytes() const { return m_hexcursor->hasSelection() ? m_hexdocument->read(m_hexcursor->selectionStartOffset(), m_hexcursor->selectionLength()) : QByteArray{}; }
 QByteArray QHexView::getLine(qint64 line) const { return m_hexdocument ? m_hexdocument->read(line * m_options.linelength, m_options.linelength) : QByteArray{}; }
+
+void QHexView::scrollToAddress(quint64 address) {
+    if (!m_hexdocument) return;
+
+    auto line = static_cast<qint64>((address - m_options.baseaddress) / m_options.linelength);
+    if (line < 0 || line >= (qint64)this->lines()) return;
+
+    auto firstvisible = this->verticalScrollBar()->value();
+    auto lastvisible = firstvisible + this->visibleLines() - 1;
+
+    if (line < firstvisible)
+        this->verticalScrollBar()->setValue(line);
+    else if (line > lastvisible)
+        this->verticalScrollBar()->setValue(qMin<qint64>(line - this->visibleLines() + 1, this->lines() - this->visibleLines()));
+}

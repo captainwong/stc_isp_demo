@@ -159,6 +159,44 @@ void isp_handle(void) {
             *(uint32_t *)&tx.pkt.dat[0] = LDR_VERSION;
             *(uint32_t *)&tx.pkt.dat[4] = LDR_BUILD_TIME;
             break;
+        case ISP_CMD_READ_W25Q_SIZE:
+            tx.pkt.status = LDR_STATUS_W25Q_SIZE;
+            tx.pkt.size = 2;
+            tx.pkt.dat[0] = (uint8_t)(norflash_type >> 8);
+            tx.pkt.dat[1] = (uint8_t)(norflash_type & 0xFF);
+            break;
+        case ISP_CMD_ERASE_W25Q_ALL:
+            norflash_erase_chip();
+            tx.pkt.status = LDR_STATUS_W25Q_ERASE_ALL_RES;
+            break;
+        case ISP_CMD_ERASE_W25Q_SECTOR:
+            addr = rev32(*(uint32_t *)&rx.pkt.dat[0]);
+            norflash_erase_sector(addr);
+            *(uint32_t *)&tx.pkt.dat[0] = *(uint32_t *)&rx.pkt.dat[0];  // echo back addr
+            tx.pkt.size = 4;
+            tx.pkt.status = LDR_STATUS_W25Q_ERASE_SECTOR_RES;
+            break;
+        case ISP_CMD_READ_W25Q:
+            addr = rev32(*(uint32_t *)&rx.pkt.dat[0]);
+            if (rx.pkt.size > 128) {
+                rx.pkt.size = 128;  // limit max read size
+            }
+            *(uint32_t *)&tx.pkt.dat[0] = *(uint32_t *)&rx.pkt.dat[0];  // echo back addr
+            norflash_read(addr, &tx.pkt.dat[4], rx.pkt.size);
+            tx.pkt.size = rx.pkt.size + 4;
+            tx.pkt.status = LDR_STATUS_W25Q_DATA;
+            break;
+        case ISP_CMD_PROGRAM_W25Q:
+            addr = rev32(*(uint32_t *)&rx.pkt.dat[0]);
+            if (rx.pkt.size > 128) {
+                rx.pkt.size = 128;  // limit max program size
+            }
+            norflash_write_no_check(addr, &rx.pkt.dat[4], rx.pkt.size);
+            *(uint32_t *)&tx.pkt.dat[0] = *(uint32_t *)&rx.pkt.dat[0];  // echo back addr
+            norflash_read(addr, &tx.pkt.dat[4], rx.pkt.size);           // read back for verify
+            tx.pkt.size = 4 + rx.pkt.size;
+            tx.pkt.status = LDR_STATUS_W25Q_PROGRAM_RES;
+            break;
         default:
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;
             break;
