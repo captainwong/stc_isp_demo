@@ -65,13 +65,19 @@ void main() {
             *(uint8_t code *)(LDR_SIZE + 2));
     uart_wait_sent();
 
-    if (!sysctx.st.dfu && is_valid_on_chip_app_program()) {
-        debugf1("Jump to application");
-        uart_wait_sent();
-        uart_release();
-        sysctx.st.dfu = 0;               // clear force DFU mode flag
-        sysctx.st.ldr = 0;               // indicate current mode is application mode
-        jump_to_on_chip_app_program(0);  // LJMP #LDR_SIZE, from here the CPU is running application code
+    if (!sysctx.st.dfu) {
+        if (is_valid_on_chip_app_program()) {
+            debugf1("Jump to application");
+            uart_wait_sent();
+            uart_release();
+            sysctx.st.dfu = 0;               // clear force DFU mode flag
+            sysctx.st.ldr = 0;               // indicate current mode is application mode
+            jump_to_on_chip_app_program(0);  // LJMP #LDR_SIZE, from here the CPU is running application code
+        } else {
+            debugf1("No valid application, stay in bootloader");
+            uart_wait_sent();
+            sysctx.st.dfu = 1;  // force DFU mode
+        }
     }
 
     // now CPU is running bootloader code
@@ -106,7 +112,7 @@ void main() {
 }
 
 void isp_handle(void) {
-    uint16_t addr = rx.pkt.addr;
+    uint32_t addr = rx.pkt.addr;
     tx.pkt.status = LDR_STATUS_OK;
     tx.pkt.size = 0;
 
@@ -119,15 +125,15 @@ void isp_handle(void) {
         case ISP_CMD_READ:
             tx.pkt.status = LDR_STATUS_ROM;
             tx.pkt.size = rx.pkt.size;
-            iap_read_bytes(addr, tx.pkt.dat, rx.pkt.size);
+            iap_read_bytes(IAP_ADDR_BASE + addr, tx.pkt.dat, rx.pkt.size);
             break;
         case ISP_CMD_PROGRAM:
-            if (!iap_write_bytes_check(addr, rx.pkt.dat, rx.pkt.size)) {
+            if (!iap_write_bytes_check(IAP_ADDR_BASE + addr, rx.pkt.dat, rx.pkt.size)) {
                 tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
             }
             break;
         case ISP_CMD_ERASE:
-            for (addr = 0; addr < IAP_ADDR_MAX; addr += IAP_PAGE_SIZE) {
+            for (addr = IAP_ADDR_BASE; addr < IAP_ADDR_MAX; addr += IAP_PAGE_SIZE) {
                 if (!iap_erase_page_check(addr)) {
                     tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
                     break;

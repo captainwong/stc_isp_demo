@@ -10,10 +10,10 @@
  * board: 开天斧三.1 2022/8/27 开发板
  * chip: STC8H8K64U
  * ram: 256B idata, 8KB xdata
- * flash: 64KB
+ * rom: 64KB
  *   - 512B page erase
  *   - 512B page program
- *   - partition:
+ *   - partition: aiapp-isp: set user eeprom size to 64KB
  *      - 0x0000 - 0x1FFF : 8KB for bootloader
  *      - 0x2000 - 0xFFFF : 56KB for application
  * norflash: W25Q32JVSIQ (32Mbit, 4MB)
@@ -69,7 +69,8 @@ typedef union {
 
 #define LDR_SIZE 0x2000  // bootloader flash space = 8KB
 #define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE)
-#define IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE)  // when iap erasing page(by bootloader or application), the `addr` must less than this value
+#define IAP_ADDR_BASE LDR_SIZE                                  // application start address for IAP functions
+#define IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE + IAP_ADDR_BASE)  // when iap erasing page(by bootloader or application), the `addr` must less than this value
 
 //////////////////////////// app info ////////////////////////////
 

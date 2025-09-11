@@ -135,11 +135,11 @@ programmer::programmer(QWidget* parent)
     grpLdr = new QGroupBox(tr("Bootloader"), this);
     lblLdrVersion = new QLabel(tr("Version:"), this);
     leLdrVersion = new QLineEdit(this);
-    lblLdrOutput = new QLabel(tr("Output:"), this);
-    leLdrOutput = new QPlainTextEdit(this);
-    leLdrOutput->setReadOnly(true);
-    btnClearOutput = new QPushButton(tr("Clear Output"), this);
-    connect(btnClearOutput, &QPushButton::clicked, this, &programmer::slotClearOutput);
+    // lblLdrOutput = new QLabel(tr("Output:"), this);
+    // leLdrOutput = new QPlainTextEdit(this);
+    // leLdrOutput->setReadOnly(true);
+    // btnClearOutput = new QPushButton(tr("Clear Output"), this);
+    // connect(btnClearOutput, &QPushButton::clicked, this, &programmer::slotClearOutput);
     btnReadVersion = new QPushButton(tr("Read Version"), this);
     connect(btnReadVersion, &QPushButton::clicked, this, &programmer::slotReadVersion);
     btnReadChipInfo = new QPushButton(tr("Read Chip Info"), this);
@@ -162,12 +162,12 @@ programmer::programmer(QWidget* parent)
         grid->addWidget(lblLdrVersion, row, 0);
         grid->addWidget(leLdrVersion, row, 1);
         row++;
-        grid->addWidget(lblLdrOutput, row, 0);
-        grid->addWidget(leLdrOutput, row, 1);
-        row++;
+        // grid->addWidget(lblLdrOutput, row, 0);
+        // grid->addWidget(leLdrOutput, row, 1);
+        // row++;
 
         auto line = new QHBoxLayout();
-        line->addWidget(btnClearOutput);
+        // line->addWidget(btnClearOutput);
         line->addWidget(btnReadVersion);
         line->addWidget(btnReadChipInfo);
 
@@ -285,9 +285,10 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             if (e2sent && e2sent < (size_t)e2.size()) {
                 program();
             } else {
-                leLdrOutput->moveCursor(QTextCursor::End);
-                leLdrOutput->insertPlainText("OK\n");
-                leLdrOutput->moveCursor(QTextCursor::End);
+                // leLdrOutput->moveCursor(QTextCursor::End);
+                // leLdrOutput->insertPlainText("OK\n");
+                // leLdrOutput->moveCursor(QTextCursor::End);
+                MYQDEBUG2_NOQUOTE << "OK";
             }
             break;
         case LDR_STATUS_LDR_VERSION: {
@@ -306,37 +307,43 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             break;
         }
         case LDR_STATUS_UNKNOWN_CMD:
-            leLdrOutput->moveCursor(QTextCursor::End);
-            leLdrOutput->insertPlainText("Unknow CMD\n");
-            leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->insertPlainText("Unknow CMD\n");
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            MYQWARN2 << "Unknow CMD";
             break;
         case LDR_STATUS_ADDR_OUT_OF_RANGE:
-            leLdrOutput->moveCursor(QTextCursor::End);
-            leLdrOutput->insertPlainText("Address Out Of Range\n");
-            leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->insertPlainText("Address Out Of Range\n");
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            MYQWARN2 << "Address Out Of Range";
             break;
         case LDR_STATUS_PROGRAM_FAILED:
-            leLdrOutput->moveCursor(QTextCursor::End);
-            leLdrOutput->insertPlainText("Program Failed\n");
-            leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->insertPlainText("Program Failed\n");
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            MYQWARN2 << "Program Failed";
             break;
         case LDR_STATUS_CHIP_INFO:
-            leLdrOutput->moveCursor(QTextCursor::End);
-            leLdrOutput->insertPlainText(chipInfo2String((stc_chipid_t*)&pkt->pkt.dat[0]));
-            leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->insertPlainText(chipInfo2String((stc_chipid_t*)&pkt->pkt.dat[0]));
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            MYQDEBUG2_NOQUOTE << chipInfo2String((stc_chipid_t*)&pkt->pkt.dat[0]);
             serial->read_chip_version();
             break;
         case LDR_STATUS_CHIP_VERSION:
             snprintf(sbuf, sizeof(sbuf), "Chip Version: %c\n", pkt->pkt.dat[0]);
-            leLdrOutput->moveCursor(QTextCursor::End);
-            leLdrOutput->insertPlainText(sbuf);
-            leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->insertPlainText(sbuf);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            MYQDEBUG2_NOQUOTE << sbuf;
             break;
         case LDR_STATUS_LOG: {
             QString log = QString::fromLatin1((const char*)pkt->pkt.dat, pkt->pkt.size) + "\n";
-            leLdrOutput->moveCursor(QTextCursor::End);
-            leLdrOutput->insertPlainText(log);
-            leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            // leLdrOutput->insertPlainText(log);
+            // leLdrOutput->moveCursor(QTextCursor::End);
+            MYQDEBUG2_NOQUOTE << log;
             break;
         }
         case LDR_STATUS_ROM: {
@@ -602,9 +609,9 @@ void programmer::slotMerge() {
     QMessageBox::information(this, tr("Success"), tr("All-in-one hex file saved successfully"));
 }
 
-void programmer::slotClearOutput() {
-    leLdrOutput->clear();
-}
+// void programmer::slotClearOutput() {
+//     leLdrOutput->clear();
+// }
 
 void programmer::slotReadVersion() {
     leLdrVersion->clear();
