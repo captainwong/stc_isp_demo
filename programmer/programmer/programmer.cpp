@@ -68,6 +68,7 @@ programmer::programmer(QWidget* parent)
     topLayout->addWidget(btnRefresh);
     topLayout->addWidget(btnConnect);
 
+    ////////////////////////////////// rom //////////////////////////////////
     grpE2 = new QGroupBox(tr("ROM"), this);
     grpE2->setFixedWidth(750);
     view = new QHexView(grpE2);
@@ -125,6 +126,7 @@ programmer::programmer(QWidget* parent)
     e2layout->addLayout(e2BtnLine);
     grpE2->setLayout(e2layout);
 
+    ////////////////////////////////// disasm //////////////////////////////////
     grpDisasm = new QGroupBox(tr("Disassembly"), this);
     disasmOutput = new QPlainTextEdit(grpDisasm);
     disasmOutput->setReadOnly(true);
@@ -132,6 +134,7 @@ programmer::programmer(QWidget* parent)
     disasmLayout->addWidget(disasmOutput);
     grpDisasm->setLayout(disasmLayout);
 
+    ////////////////////////////////// bootloader //////////////////////////////////
     grpLdr = new QGroupBox(tr("Bootloader"), this);
     lblLdrVersion = new QLabel(tr("Version:"), this);
     leLdrVersion = new QLineEdit(this);
@@ -141,7 +144,7 @@ programmer::programmer(QWidget* parent)
     // btnClearOutput = new QPushButton(tr("Clear Output"), this);
     // connect(btnClearOutput, &QPushButton::clicked, this, &programmer::slotClearOutput);
     btnReadVersion = new QPushButton(tr("Read Version"), this);
-    connect(btnReadVersion, &QPushButton::clicked, this, &programmer::slotReadVersion);
+    connect(btnReadVersion, &QPushButton::clicked, this, &programmer::slotReadLdrVersion);
     btnReadChipInfo = new QPushButton(tr("Read Chip Info"), this);
     connect(btnReadChipInfo, &QPushButton::clicked, this, &programmer::slotReadChipInfo);
     btnEraseAll = new QPushButton(tr("Erase All"), this);
@@ -191,9 +194,33 @@ programmer::programmer(QWidget* parent)
         grpLdr->setLayout(ldrLayout);
     }
 
+    ////////////////////////////////// app //////////////////////////////////
+    app.grp = new QGroupBox(tr("Application"), this);
+    app.lblAppVersion = new QLabel(tr("Application Version:"), this);
+    app.leAppVersion = new QLineEdit(this);
+    app.btnReadVersion = new QPushButton(tr("Read Version"), this);
+    connect(app.btnReadVersion, &QPushButton::clicked, this, &programmer::slotReadAppVersion);
+    app.btnReadChipInfo = new QPushButton(tr("Read Chip Info"), this);
+    connect(app.btnReadChipInfo, &QPushButton::clicked, this, &programmer::slotReadChipInfo);
+    {
+        auto grid = new QGridLayout();
+        int row = 0;
+        grid->addWidget(app.lblAppVersion, row, 0);
+        grid->addWidget(app.leAppVersion, row, 1);
+        row++;
+        auto line = new QHBoxLayout();
+        line->addWidget(app.btnReadVersion);
+        line->addWidget(app.btnReadChipInfo);
+        auto appLayout = new QVBoxLayout();
+        appLayout->addLayout(grid);
+        appLayout->addLayout(line);
+        app.grp->setLayout(appLayout);
+    }
+
     auto bodyRLayout = new QVBoxLayout();
     bodyRLayout->addWidget(grpDisasm, 1);
     bodyRLayout->addWidget(grpLdr);
+    bodyRLayout->addWidget(app.grp);
 
     auto bodyLayout = new QHBoxLayout();
     bodyLayout->addWidget(grpE2);
@@ -304,6 +331,21 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             QString sver = sbuf;
             snprintf(sbuf, sizeof(sbuf), "%08X", build);
             leLdrVersion->setText(QString("%1, Build: %2 %3").arg(sver).arg(sbuf).arg(tbuf));
+            break;
+        }
+        case LDR_STATUS_APP_VERSION:{
+            uint32_t version = *(uint32_t*)&pkt->pkt.dat[0];
+            uint32_t build = *(uint32_t*)&pkt->pkt.dat[4];
+            version = rev32(version);
+            build = rev32(build);
+            snprintf(sbuf, sizeof(sbuf), "%d.%d.%d", version >> 24, (version >> 16) & 0xFF, version & 0xFFFF);
+            time_t utc = build;
+            struct tm* ptm = gmtime(&utc);
+            char tbuf[64];
+            strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S UTC", ptm);
+            QString sver = sbuf;
+            snprintf(sbuf, sizeof(sbuf), "%08X", build);
+            app.leAppVersion->setText(QString("%1, Build: %2 %3").arg(sver).arg(sbuf).arg(tbuf));
             break;
         }
         case LDR_STATUS_UNKNOWN_CMD:
@@ -613,9 +655,14 @@ void programmer::slotMerge() {
 //     leLdrOutput->clear();
 // }
 
-void programmer::slotReadVersion() {
+void programmer::slotReadLdrVersion() {
     leLdrVersion->clear();
     serial->connect_ldr();
+}
+
+void programmer::slotReadAppVersion() {
+    app.leAppVersion->clear();
+    serial->read_app_version();
 }
 
 void programmer::slotReadChipInfo() {

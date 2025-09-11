@@ -42,6 +42,7 @@ public:
     void send_reboot();
     void connect_ldr();
     void read_ldr_version();
+    void read_app_version();
     void read_chip_info();
     void read_chip_version();
     void read_rom(uint16_t addr, uint8_t size);

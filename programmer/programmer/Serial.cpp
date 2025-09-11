@@ -56,6 +56,15 @@ void Serial::read_ldr_version() {
     send_tx(&tx);
 }
 
+void Serial::read_app_version() {
+    isp_packet_t tx = { 0 };
+    tx.pkt.head = ISP_PKT_HEAD;
+    tx.pkt.len = 6;
+    tx.pkt.cmd = ISP_CMD_READ_APP_VERSION;
+    isp_pkt_end(&tx) = ISP_PKT_END;
+    send_tx(&tx);
+}
+
 void Serial::read_chip_info() {
     isp_packet_t tx = {0};
     tx.pkt.head = ISP_PKT_HEAD;

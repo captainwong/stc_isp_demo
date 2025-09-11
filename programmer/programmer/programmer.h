@@ -26,7 +26,8 @@ private slots:
     void slotPatch();
     void slotMerge();
     // void slotClearOutput();
-    void slotReadVersion();
+    void slotReadLdrVersion();
+    void slotReadAppVersion();
     void slotReadChipInfo();
     void slotEraseAll();
     void slotProgram();
@@ -82,8 +83,10 @@ private:
     ///////////////// app /////////////////
     struct {
         QGroupBox* grp{};
-        QLabel* lblLdrVersion{};
-        QLineEdit* leLdrVersion{};
+        QLabel* lblAppVersion{};
+        QLineEdit* leAppVersion{};
+        QPushButton* btnReadVersion{};
+        QPushButton* btnReadChipInfo{};
 
     } app{};
 
