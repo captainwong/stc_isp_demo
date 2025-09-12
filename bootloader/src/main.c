@@ -1,3 +1,5 @@
+#include <libhbcheck/hb_check.h>
+
 #include "bsp/norflash.h"
 #include "protocol.h"
 #include "sys/build_time.h"
@@ -38,6 +40,8 @@ const char *unsafe_u8_to_bits(uint8_t v) {
     return bits;
 }
 
+void check_factory_metadata(void);
+
 void main() {
     delay();
     disable_irq();
@@ -65,7 +69,9 @@ void main() {
             *(uint8_t code *)(LDR_SIZE + 2));
     uart_wait_sent();
 
-    if (!sysctx.st.dfu) {
+    check_factory_metadata();
+
+    if (!sysctx.st.dfu) {  // check if the force DFU mode flag was set by application
         if (is_valid_on_chip_app_program()) {
             debugf1("Jump to application");
             uart_wait_sent();
@@ -125,15 +131,15 @@ void isp_handle(void) {
         case ISP_CMD_READ:
             tx.pkt.status = LDR_STATUS_ROM;
             tx.pkt.size = rx.pkt.size;
-            iap_read_bytes(IAP_ADDR_BASE + addr, tx.pkt.dat, rx.pkt.size);
+            iap_read_bytes(IAP_ADDR_APP_START + addr, tx.pkt.dat, rx.pkt.size);
             break;
         case ISP_CMD_PROGRAM:
-            if (!iap_write_bytes_check(IAP_ADDR_BASE + addr, rx.pkt.dat, rx.pkt.size)) {
+            if (!iap_write_bytes_check(IAP_ADDR_APP_START + addr, rx.pkt.dat, rx.pkt.size)) {
                 tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
             }
             break;
         case ISP_CMD_ERASE:
-            for (addr = IAP_ADDR_BASE; addr < IAP_ADDR_MAX; addr += IAP_PAGE_SIZE) {
+            for (addr = IAP_ADDR_APP_START; addr < IAP_ADDR_APP_END; addr += IAP_PAGE_SIZE) {
                 if (!iap_erase_page_check(addr)) {
                     tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
                     break;
@@ -202,4 +208,61 @@ void isp_handle(void) {
             break;
     }
     uart_send_tx();
+}
+
+/**
+ * @brief Check factory metadata in on-chip flash
+ * If valid, copy factory application from on-chip flash to norflash factory app area,
+ * and erase on-chip flash factory metadata area
+ */
+void check_factory_metadata(void) {
+    uint8_t dat, j;
+    uint16_t addr, i;
+    app_info_t meta;
+    uint32_t crc = 0xFFFFFFFF, b;
+    const uint32_t code mask = 0x80000000;
+    const uint32_t code poly = 0x04C11DB7;
+    uint8_t xdata buf[256];
+
+    // check if meta valid
+    iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(app_info_t));
+    if (meta.size == 0 || meta.size > APP_MAX_SIZE) {
+        sysctx.st.onchip_meta_valid = 0;
+        debugf2("No factory metadata, size=0x%08lX", meta.size);
+        uart_wait_sent();
+        return;
+    }
+
+    // check meta crc
+    for (i = 0, addr = IAP_ADDR_APP_START; i < meta.size; i++) {
+        dat = iap_read_byte(addr++);
+        dat = bitrev8(dat);
+        for (j = 0x80; j; j >>= 1) {
+            b = crc & mask;
+            crc <<= 1;
+            if (dat & j) {
+                b ^= mask;
+            }
+            if (b) {
+                crc ^= poly;
+            }
+        }
+    }
+    crc = bitrev32(crc);
+    crc ^= 0xFFFFFFFF;
+    if (crc != (meta.crc)) {
+        sysctx.st.onchip_meta_valid = 0;
+        debugf3("Factory metadata crc error, calc=0x%08lX, meta=0x%08lX", crc, (meta.crc));
+        uart_wait_sent();
+        return;
+    }
+
+    // copy factory app to norflash
+    sysctx.st.onchip_meta_valid = 1;
+    debugf3("Factory metadata valid, size=0x%08lX, crc=0x%08lX", meta.size, (meta.crc));
+    uart_wait_sent();
+    debugf1("Copying factory app to norflash...");
+    uart_wait_sent();
+
+
 }

@@ -15,7 +15,8 @@
  *   - 512B page program
  *   - partition: aiapp-isp: set user eeprom size to 64KB
  *      - 0x0000 - 0x1FFF : 8KB for bootloader
- *      - 0x2000 - 0xFFFF : 56KB for application
+ *      - 0x2000 - 0xFDFF : 55.5KB for application
+ *      - 0xFE00 - 0xFFFF : 512B for factory metadata
  * norflash: W25Q32JVSIQ (32Mbit, 4MB)
  *   - 4KB sector erase
  *   - 256B page program
@@ -41,9 +42,10 @@
 typedef union {
     uint8_t b;
     struct {
-        uint8_t dfu : 1;  // whether to enter DFU mode
-        uint8_t ldr : 1;  // whether running in bootloader mode
-        uint8_t resv : 6;
+        uint8_t dfu : 1;                // whether to enter DFU mode
+        uint8_t ldr : 1;                // whether running in bootloader mode
+        uint8_t onchip_meta_valid : 1;  // whether on-chip factory metadata is valid
+        uint8_t resv : 5;
     } st;
 } system_context_t;
 
@@ -67,10 +69,12 @@ typedef union {
 
 //////////////////////////// on-chip flash partition ////////////////////////////
 
-#define LDR_SIZE 0x2000  // bootloader flash space = 8KB
-#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE)
-#define IAP_ADDR_BASE LDR_SIZE                                  // application start address for IAP functions
-#define IAP_ADDR_MAX (STC_ROM_SIZE - LDR_SIZE + IAP_ADDR_BASE)  // when iap erasing page(by bootloader or application), the `addr` must less than this value
+#define LDR_SIZE 0x2000          // bootloader flash space = 8KB, at the beginning of on-chip flash
+#define FACTORY_META_SIZE 0x200  // factory metadata space = 512B, at the end of on-chip flash
+#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)
+#define IAP_ADDR_APP_START LDR_SIZE  // application start address for IAP functions
+#define IAP_ADDR_APP_END (APP_MAX_SIZE + IAP_ADDR_APP_START)
+#define IAP_ADDR_FACTORY_META (STC_ROM_SIZE - FACTORY_META_SIZE)
 
 //////////////////////////// app info ////////////////////////////
 
@@ -78,7 +82,9 @@ typedef union {
 #pragma pack(1)
 #endif
 
-// application info structure, retrieved from ota server, little endian
+// application info structure
+// if retrieved from ota server, little endian
+// if stored in norflash, big endian
 typedef struct {
     uint32_t size;       // size of the whole application binary
     uint32_t crc;        // crc32 of the whole application binary
