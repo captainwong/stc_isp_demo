@@ -194,5 +194,6 @@ void uart_debug(const char* fmt, ...) {
     tx.pkt.size = vsprintf(tx.pkt.dat, fmt, args);
     va_end(args);
     uart_send_tx();
+    uart_wait_sent();
 }
 #endif /* DEBUG */

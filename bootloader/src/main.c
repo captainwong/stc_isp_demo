@@ -51,6 +51,8 @@ void main() {
     gpio_init();
     pin_pu(3, 5);       // KEY_REBOOT 上拉
     sysctx.st.ldr = 1;  // indicate running in bootloader mode
+    sysctx.st.onchip_app_valid = is_valid_on_chip_app_program();
+    sysctx.st.onchip_meta_valid = false;
     uart_init();
     enable_irq();
     led_run_on();
@@ -61,33 +63,28 @@ void main() {
         delay_ms(1000);
     }
     debugf3("Norflash init ok, type=%04X, %s", norflash_type, norflash_get_type_string());
-    uart_wait_sent();
 
     debugf2("sysctx=0b%s", unsafe_u8_to_bits(sysctx.b));
-    uart_wait_sent();
     debugf4("first 3 byte: %02bX %02bX %02bX",
             *(uint8_t code *)(IAP_ADDR_APP_START),
             *(uint8_t code *)(IAP_ADDR_APP_START + 1),
             *(uint8_t code *)(IAP_ADDR_APP_START + 2));
-    uart_wait_sent();
 
-    if (is_valid_on_chip_app_program()) {
+    if (sysctx.st.onchip_app_valid) {
         // check if its the first time boot after firmware upgrade
         debugf1("Valid application found, checking factory metadata");
         check_factory_metadata();
     }
 
     if (!sysctx.st.dfu) {  // check if the force DFU mode flag was set by application
-        if (is_valid_on_chip_app_program()) {
+        if (sysctx.st.onchip_app_valid) {
             debugf1("Jump to application");
-            uart_wait_sent();
             uart_release();
             sysctx.st.dfu = 0;               // clear force DFU mode flag
             sysctx.st.ldr = 0;               // indicate current mode is application mode
             jump_to_on_chip_app_program(0);  // LJMP #IAP_ADDR_APP_START, from here the CPU is running application code
         } else {
             debugf1("No valid application, stay in bootloader");
-            uart_wait_sent();
             sysctx.st.dfu = 1;  // force DFU mode
         }
     }
@@ -234,7 +231,6 @@ void check_factory_metadata(void) {
     if (meta.size == 0 || meta.size > APP_MAX_SIZE) {
         sysctx.st.onchip_meta_valid = 0;
         debugf2("No factory metadata, size=0x%08lX", meta.size);
-        uart_wait_sent();
         return;
     }
 
@@ -258,13 +254,11 @@ void check_factory_metadata(void) {
     if (crc != (meta.crc)) {
         sysctx.st.onchip_meta_valid = 0;
         debugf3("Factory metadata crc error, calc=0x%08lX, meta=0x%08lX", crc, (meta.crc));
-        uart_wait_sent();
         return;
     }
 
     sysctx.st.onchip_meta_valid = 1;
     debugf3("Factory metadata valid, size=0x%08lX, crc=0x%08lX", meta.size, (meta.crc));
-    uart_wait_sent();
 }
 
 // 上电时若检测到有片上合法固件，则将片上固件复制到外部Flash的Factory App区域，
@@ -282,13 +276,14 @@ void copy_factory_app_to_norflash(void) {
     } xdata buf;
 
     debugf1("Copying factory app to norflash...");
-    uart_wait_sent();
 
     // 1. copy factory app to norflash
+
     // 1.1 erase factory app area
     for (flash_addr = NORFLASH_FACTORY_APP_ADDR; flash_addr < NORFLASH_FACTORY_APP_ADDR + NORFLASH_APP_SIZE; flash_addr += NORFLASH_SECTOR_SIZE) {
         norflash_erase_sector(flash_addr);
     }
+
     // 1.2 copy data page by page
     iap_addr = IAP_ADDR_APP_START;
     flash_addr = NORFLASH_FACTORY_APP_ADDR;
@@ -301,10 +296,9 @@ void copy_factory_app_to_norflash(void) {
         flash_addr += len;
     }
     debugf1("Copy done.");
-    uart_wait_sent();
+
     // 1.3 read back verify
     debugf1("Verifying...");
-    uart_wait_sent();
     iap_addr = IAP_ADDR_APP_START;
     flash_addr = NORFLASH_FACTORY_APP_ADDR;
     for (i = 0; i < meta.size;) {
@@ -316,7 +310,6 @@ void copy_factory_app_to_norflash(void) {
         norflash_read(flash_addr, buf.split.b, len);
         if (memcmp(buf.split.a, buf.split.b, len) != 0) {
             debugf1("Verify failed!");
-            uart_wait_sent();
             sys_reset();
             while (1);
         }

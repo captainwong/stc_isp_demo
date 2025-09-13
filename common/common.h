@@ -67,9 +67,10 @@ typedef union {
     struct {
         uint8_t dfu : 1;                // whether to enter DFU mode
         uint8_t ldr : 1;                // whether running in bootloader mode
+        uint8_t onchip_app_valid : 1;   // whether on-chip application is valid
         uint8_t onchip_meta_valid : 1;  // whether on-chip factory metadata is valid
         uint8_t id : 2;                 // current running application id, 0: factory, 1: app1, 2: app2
-        uint8_t resv : 3;
+        uint8_t resv : 2;
     } st;
 } system_context_t;
 

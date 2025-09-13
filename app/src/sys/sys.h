@@ -32,4 +32,6 @@ GPIO_TABLES_MAP(XX)
 #define key_boot_pressed() KEY_BOOT == 0
 #define key_boot_released() KEY_BOOT == 1
 
+extern system_context_t xdata sysctx;
+
 #endif /* __SYS_H__ */
