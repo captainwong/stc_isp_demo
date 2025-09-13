@@ -12,21 +12,24 @@ ISR_ASM=${CURRENT_DIR}/src/isr.asm
 LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})
 STC_RAM_SIZE=$(grep -oP '#define STC_RAM_SIZE \K[0x0-9A-F]+' ${COMMON_H})
 STC_ROM_SIZE=$(grep -oP '#define STC_ROM_SIZE \K[0x0-9A-F]+' ${COMMON_H})
-RAM_SIZE=`printf "%d" ${STC_RAM_SIZE}` # convert 0xXXXX to decimal
-ROM_SIZE=`printf "%d" ${STC_ROM_SIZE}` # convert 0xXXXX to decimal
-LDR_SIZE_10=`printf "%d" ${LDR_SIZE}`  # convert 0xXXXX to decimal
-echo "LDR_SIZE=${LDR_SIZE}"
-echo "STC_RAM_SIZE=${STC_RAM_SIZE}, ${RAM_SIZE}"
-echo "STC_ROM_SIZE=${STC_ROM_SIZE}, ${ROM_SIZE}"
+
+LDR_SIZE_10=`printf "%d" ${LDR_SIZE}` # convert 0xXXXX to decimal
+FACTORY_META_SIZE=$(grep -oP '#define FACTORY_META_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+RAM_SIZE_10=`printf "%d" ${STC_RAM_SIZE}` # convert 0xXXXX to decimal
+ROM_SIZE_10=`printf "%d" ${STC_ROM_SIZE}` # convert 0xXXXX to decimal
+IAP_ADDR_APP_START=$((LDR_SIZE + FACTORY_META_SIZE))
+IAP_ADDR_APP_START_HEX=$(printf "%04XH" ${IAP_ADDR_APP_START})
+APP_MAX_SIZE=$((STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE))
+APP_MAX_SIZE_10=`printf "%d" ${APP_MAX_SIZE}`  # convert 0xXXXX to decimal
+echo "IAP_ADDR_APP_START=${IAP_ADDR_APP_START}, ${IAP_ADDR_APP_START_HEX}"
+echo "STC_RAM_SIZE=${STC_RAM_SIZE}, ${RAM_SIZE_10}"
+echo "STC_ROM_SIZE=${STC_ROM_SIZE}, ${ROM_SIZE_10}"
 # exit
 rm -rf ./output || true
 
 # 0. update isr.asm
-# convert the LDR_SIZE from `0xXXXX` to `XXXXH`
-LDR_SIZE_HEX=$(printf "%04XH" ${LDR_SIZE})
-echo "LDR_SIZE_HEX=${LDR_SIZE_HEX}"
-# replace LDR_SIZE in ISR_ASM like `LDR_SIZE EQU 1000H`
-sed -i "s/LDR_SIZE EQU .*/LDR_SIZE EQU ${LDR_SIZE_HEX}/" ${ISR_ASM}
+# replace IAP_ADDR_APP_START in ISR_ASM like `IAP_ADDR_APP_START EQU 1000H`
+sed -i "s/IAP_ADDR_APP_START EQU .*/IAP_ADDR_APP_START EQU ${IAP_ADDR_APP_START_HEX}/" ${ISR_ASM}
 
 # 1. calculate app crc32/size and update common.h
 # set +e

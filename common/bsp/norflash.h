@@ -3,6 +3,9 @@
 
 #include <bsp/spi.h>
 
+#define NORFLASH_SECTOR_SIZE 4096
+#define NORFLASH_PAGE_SIZE 256
+
 #define NORFLASH_TYPES_MAP(XX) \
     XX(0xEF13, W25Q80)         \
     XX(0xEF14, W25Q16)         \
@@ -86,6 +89,20 @@ void norflash_read(uint32_t addr, uint8_t *buf, uint16_t len);
 // This function will automatically check if the data in the address is all 0xFF and write the data directly.
 // If the data in the address is not all 0xFF, the function will erase the sector before writing the data.
 // void norflash_write(uint32_t addr, uint8_t *buf, uint16_t len);
+
+// this function will not check if the data in the address is all 0xFF, write the data directly
+// please ensure the data in the address is all 0xFF before calling this function
+// void norflash_write2(uint32_t addr, uint8_t *buf, uint16_t len);
+
+/**
+ * @brief 在一页内写入最多256字节的数据
+ *
+ * @param addr The address to write
+ * @param buf The buffer to write
+ * @param len The length of the buffer
+ * @note 写入的长度不能超过该页的剩余大小
+ */
+void norflash_write_page(uint32_t addr, uint8_t *buf, uint16_t len);
 
 /**
  * @brief 不检查所写入的地址内数据是否全部为0xFF，直接写入数据

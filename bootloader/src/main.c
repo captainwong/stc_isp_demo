@@ -11,6 +11,8 @@ system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
 uint16_t cycles;
 uint16_t rx_time, rx_timeout;
 
+app_info_t xdata meta;
+
 void isp_handle(void);
 
 void delay() {
@@ -64,12 +66,16 @@ void main() {
     debugf2("sysctx=0b%s", unsafe_u8_to_bits(sysctx.b));
     uart_wait_sent();
     debugf4("first 3 byte: %02bX %02bX %02bX",
-            *(uint8_t code *)(LDR_SIZE),
-            *(uint8_t code *)(LDR_SIZE + 1),
-            *(uint8_t code *)(LDR_SIZE + 2));
+            *(uint8_t code *)(IAP_ADDR_APP_START),
+            *(uint8_t code *)(IAP_ADDR_APP_START + 1),
+            *(uint8_t code *)(IAP_ADDR_APP_START + 2));
     uart_wait_sent();
 
-    check_factory_metadata();
+    if (is_valid_on_chip_app_program()) {
+        // check if its the first time boot after firmware upgrade
+        debugf1("Valid application found, checking factory metadata");
+        check_factory_metadata();
+    }
 
     if (!sysctx.st.dfu) {  // check if the force DFU mode flag was set by application
         if (is_valid_on_chip_app_program()) {
@@ -78,7 +84,7 @@ void main() {
             uart_release();
             sysctx.st.dfu = 0;               // clear force DFU mode flag
             sysctx.st.ldr = 0;               // indicate current mode is application mode
-            jump_to_on_chip_app_program(0);  // LJMP #LDR_SIZE, from here the CPU is running application code
+            jump_to_on_chip_app_program(0);  // LJMP #IAP_ADDR_APP_START, from here the CPU is running application code
         } else {
             debugf1("No valid application, stay in bootloader");
             uart_wait_sent();
@@ -218,7 +224,6 @@ void isp_handle(void) {
 void check_factory_metadata(void) {
     uint8_t dat, j;
     uint16_t addr, i;
-    app_info_t meta;
     uint32_t crc = 0xFFFFFFFF, b;
     const uint32_t code mask = 0x80000000;
     const uint32_t code poly = 0x04C11DB7;
@@ -257,12 +262,68 @@ void check_factory_metadata(void) {
         return;
     }
 
-    // copy factory app to norflash
     sysctx.st.onchip_meta_valid = 1;
     debugf3("Factory metadata valid, size=0x%08lX, crc=0x%08lX", meta.size, (meta.crc));
     uart_wait_sent();
+}
+
+// 上电时若检测到有片上合法固件，则将片上固件复制到外部Flash的Factory App区域，
+// 并擦除片上固件元数据，防止下次上电时重复复制
+// 这是为了生产方便，第一次烧录完整64KB固件即可自动将出厂固件复制到外部Flash
+void copy_factory_app_to_norflash(void) {
+    uint32_t iap_addr, flash_addr, i;
+
+    union {
+        uint8_t total[NORFLASH_PAGE_SIZE];
+        struct {
+            uint8_t a[NORFLASH_PAGE_SIZE / 2];
+            uint8_t b[NORFLASH_PAGE_SIZE / 2];
+        } split;
+    } xdata buf;
+
     debugf1("Copying factory app to norflash...");
     uart_wait_sent();
 
+    // 1. copy factory app to norflash
+    // 1.1 erase factory app area
+    for (flash_addr = NORFLASH_FACTORY_APP_ADDR; flash_addr < NORFLASH_FACTORY_APP_ADDR + NORFLASH_APP_SIZE; flash_addr += NORFLASH_SECTOR_SIZE) {
+        norflash_erase_sector(flash_addr);
+    }
+    // 1.2 copy data page by page
+    iap_addr = IAP_ADDR_APP_START;
+    flash_addr = NORFLASH_FACTORY_APP_ADDR;
+    for (i = 0; i < meta.size;) {
+        uint16_t len = (meta.size - i) > NORFLASH_PAGE_SIZE ? NORFLASH_PAGE_SIZE : (meta.size - i);
+        iap_read_bytes(iap_addr, buf.total, len);
+        norflash_write_page(flash_addr, buf.total, len);
+        i += len;
+        iap_addr += len;
+        flash_addr += len;
+    }
+    debugf1("Copy done.");
+    uart_wait_sent();
+    // 1.3 read back verify
+    debugf1("Verifying...");
+    uart_wait_sent();
+    iap_addr = IAP_ADDR_APP_START;
+    flash_addr = NORFLASH_FACTORY_APP_ADDR;
+    for (i = 0; i < meta.size;) {
+        uint16_t len = (meta.size - i);
+        if (len > sizeof(buf.split.a)) {
+            len = sizeof(buf.split.a);
+        }
+        iap_read_bytes(iap_addr, buf.split.a, len);
+        norflash_read(flash_addr, buf.split.b, len);
+        if (memcmp(buf.split.a, buf.split.b, len) != 0) {
+            debugf1("Verify failed!");
+            uart_wait_sent();
+            sys_reset();
+            while (1);
+        }
+        i += len;
+        iap_addr += len;
+        flash_addr += len;
+    }
 
+    // 2.
 }

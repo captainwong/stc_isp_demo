@@ -33,7 +33,7 @@ static void norflash_send_addr(uint32_t addr) {
  * @param len The length of the buffer
  * @note 写入的长度不能超过该页的剩余大小
  */
-static void norflash_write_page(uint32_t addr, uint8_t *buf, uint16_t len) {
+void norflash_write_page(uint32_t addr, uint8_t *buf, uint16_t len) {
     uint16_t i;
     norflash_enable_write();
 
@@ -257,6 +257,30 @@ void norflash_read(uint32_t addr, uint8_t *buf, uint16_t len) {
 //     }
 // }
 
+// void norflash_write2(uint32_t addr, uint8_t *buf, uint16_t len) {
+//     uint32_t sector_addr = addr & 0xFFFFF000;
+//     uint16_t sector_offset = addr & 0x00000FFF;
+//     uint16_t sector_remain = 4096 - sector_offset;
+//     if (len <= sector_remain) {
+//         sector_remain = len;
+//     }
+
+//     while (len) {
+//         norflash_write_no_check(addr, buf, sector_remain);
+
+//         addr += sector_remain;
+//         buf += sector_remain;
+//         len -= sector_remain;
+
+//         sector_addr += 4096;
+//         sector_offset = 0;
+//         sector_remain = 4096;
+//         if (len <= sector_remain) {
+//             sector_remain = len;
+//         }
+//     }
+// }
+
 /**
  * @brief 不检查所写入的地址内数据是否全部为0xFF，直接写入数据
  *
@@ -269,7 +293,7 @@ void norflash_read(uint32_t addr, uint8_t *buf, uint16_t len) {
  */
 void norflash_write_no_check(uint32_t addr, uint8_t *buf, uint16_t len) {
     while (len > 0) {
-        uint16_t page_remain = 256 - (addr & 0xFF);
+        uint16_t page_remain = NORFLASH_PAGE_SIZE - (addr & 0xFF);
         uint16_t write_len = len < page_remain ? len : page_remain;
         norflash_write_page(addr, buf, write_len);
         addr += write_len;

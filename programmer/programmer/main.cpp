@@ -48,6 +48,55 @@ int main(int argc, char *argv[]) {
         assert(ldr_parse_ok);
     }
 
+    if (1) {
+        uint32_t size = 64 * 1024;  // 64KB
+        struct {
+            const char *name;
+            uint32_t b;
+        } partitions[] = {
+            {"ldr ", 8192},
+            {"meta", 512},
+            {"app ", 0},
+        };
+
+        uint32_t start = 0, end;
+        for (auto &partition : partitions) {
+            if (partition.b == 0) {
+                partition.b = (size - start);
+            }
+            end = start + partition.b - 1;
+            assert(end < size);
+            printf("%s: 0x%06X - 0x%06X (%d B)\n", partition.name, start, end, partition.b);
+            start += partition.b;
+        }
+    }
+
+    if (1) {
+        uint32_t size = 4 * 1024 * 1024;  // 4MB
+        struct {
+            const char *name;
+            uint32_t kb;
+        } partitions[] = {
+            {"ota     ", 4},
+            {"ota_bak ", 4},
+            {"factory ", 60},
+            {"app1    ", 60},
+            {"app2    ", 60},
+            {"app_data", 0},
+        };
+
+        uint32_t start = 0, end;
+        for (auto &partition : partitions) {
+            if (partition.kb == 0) {
+                partition.kb = (size - start) / 1024;
+            }
+            end = start + partition.kb * 1024 - 1;
+            assert(end < size);
+            printf("%s: 0x%06X - 0x%06X (%d KB)\n", partition.name, start, end, partition.kb);
+            start += partition.kb * 1024;
+        }
+    }
+
     programmer window;
     window.show();
     return app.exec();
