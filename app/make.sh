@@ -7,10 +7,26 @@ cd ${CURRENT_DIR}
 
 COMMON_H=${CURRENT_DIR}/../common/common.h
 
+
+LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+STC_RAM_SIZE=$(grep -oP '#define STC_RAM_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+STC_ROM_SIZE=$(grep -oP '#define STC_ROM_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+
+LDR_SIZE_10=`printf "%d" ${LDR_SIZE}` # convert 0xXXXX to decimal
+FACTORY_META_SIZE=$(grep -oP '#define FACTORY_META_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+RAM_SIZE_10=`printf "%d" ${STC_RAM_SIZE}` # convert 0xXXXX to decimal
+ROM_SIZE_10=`printf "%d" ${STC_ROM_SIZE}` # convert 0xXXXX to decimal
+IAP_ADDR_APP_START=$((LDR_SIZE + FACTORY_META_SIZE))
+IAP_ADDR_APP_START_HEX=$(printf "%04XH" ${IAP_ADDR_APP_START})
+APP_MAX_SIZE=$((STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE))
+APP_MAX_SIZE_10=`printf "%d" ${APP_MAX_SIZE}`  # convert 0xXXXX to decimal
+echo "IAP_ADDR_APP_START=${IAP_ADDR_APP_START}, ${IAP_ADDR_APP_START_HEX}"
+echo "STC_RAM_SIZE=${STC_RAM_SIZE}, ${RAM_SIZE_10}"
+echo "STC_ROM_SIZE=${STC_ROM_SIZE}, ${ROM_SIZE_10}"
+
 # 1. gen CLASSES for makefile
 # parse LDR_SIZE from COMMON_H like `#define LDR_SIZE 0x1000  // bootloader flash space`
-LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})
-EPROM_START=$(printf "0x%04X" $((LDR_SIZE + 3)))
+EPROM_START=$(printf "0x%04X" $((IAP_ADDR_APP_START + 3)))
 echo "EPROM_START=${EPROM_START}"
 CLASSES="CODE (C:${EPROM_START}-C:0xFFFF), CONST (C:${EPROM_START}-C:0xFFFF), ECODE (C:${EPROM_START}-C:0xFFFF), HCONST (C:${EPROM_START}-C:0xFFFF)"
 echo "CLASSES=${CLASSES}"
@@ -20,7 +36,7 @@ rm -rf ./output || true
 utc_timestamp=$(date +%s)
 utc_timestamp="${utc_timestamp}UL"
 echo "#define APP_BUILD_TIME ${utc_timestamp}" > ${CURRENT_DIR}/src/sys/build_time.h
-time make DEBUG=1 INTVECTOR=${LDR_SIZE} CLASSES="${CLASSES}" -j
+time make DEBUG=1 INTVECTOR=${IAP_ADDR_APP_START} CLASSES="${CLASSES}" -j
 
 
 # 3. check app size is not bigger than APP_MAX_SIZE
@@ -35,10 +51,6 @@ printf_value() {
         printf "%.2f\n" "$value"  # 输出两位小数
     fi
 }
-
-STC_ROM_SIZE=$(grep -oP '#define STC_ROM_SIZE \K[0x0-9A-F]+' ${COMMON_H})
-APP_MAX_SIZE=$((STC_ROM_SIZE - LDR_SIZE))
-APP_MAX_SIZE_10=`printf "%d" ${APP_MAX_SIZE}` # convert 0xXXXX to decimal
 
 # take out the last line of ./buildlog.txt
 log=`tail -n 1 buildLog.txt`

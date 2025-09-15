@@ -4,6 +4,8 @@
 #include <jlib/jlib/qt/QtPathHelper.h>
 #include <jlib/jlib/qt/darkmode.h>
 #include <libemb/emb_bitrev.h>
+#include <libstc/disassembler/hex80.h>
+#include <libstc/disassembler/intel8051is.h>
 #include <libstc/stc8h.h>
 
 #include <QSerialPort>
@@ -12,10 +14,8 @@
 #include "QHexView/model/buffer/qmemorybuffer.h"
 #include "QHexView/qhexview.h"
 #include "Serial.h"
-#include <libstc/disassembler/hex80.h>
-#include <libstc/disassembler/intel8051is.h>
-#include "stcutil.h"
 #include "flash.h"
+#include "stcutil.h"
 
 constexpr const int COMMON_BAUDS[] = {
     1200,
@@ -337,7 +337,7 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             leLdrVersion->setText(QString("%1, Build: %2 %3").arg(sver).arg(sbuf).arg(tbuf));
             break;
         }
-        case LDR_STATUS_APP_VERSION:{
+        case LDR_STATUS_APP_VERSION: {
             uint32_t version = *(uint32_t*)&pkt->pkt.dat[0];
             uint32_t build = *(uint32_t*)&pkt->pkt.dat[4];
             version = rev32(version);
@@ -639,6 +639,14 @@ void programmer::slotMerge() {
     pb->setValue(0);
     leRomSize->setText(QString::number(e2.size()));
 
+#ifdef _DEBUG
+    {
+        QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+        d.cdUp();
+        d.cdUp();
+        dir = d.absolutePath() + "/bootloader/output";
+    }
+#endif
     allin1 = QFileDialog::getSaveFileName(this, tr("Save Merged Hex File"), dir + "/allin1.hex", supportedFormats);
     if (allin1.isEmpty()) {
         return;

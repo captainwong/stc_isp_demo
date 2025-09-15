@@ -14,9 +14,9 @@
  *   - 512B page erase
  *   - 512B page program
  *   - partition: aiapp-isp: set user eeprom size to 64KB
- *      - 0x0000 - 0x1FFF : 8KB for bootloader
- *      - 0x2000 - 0x21FF : 512B for factory metadata
- *      - 0x2200 - 0xFFFF : 55.5KB for application
+ *      - 0x0000 - 0x25FF : 9.5KB for bootloader
+ *      - 0x2600 - 0x27FF : 512B for factory metadata
+ *      - 0x2800 - 0xFFFF : 54KB for application
  * norflash: W25Q32JVSIQ (32Mbit, 4MB)
  *   - 4KB sector erase
  *   - 256B page program
@@ -31,6 +31,9 @@
 
 #define STC_RAM_SIZE 0x2000   // STC8H8K64U has 8KB xdata
 #define STC_ROM_SIZE 0x10000  // STC8H8K64U has 64KB flash
+
+#define FLASH_OTA_ID_MASTER 0  // master ota info
+#define FLASH_OTA_ID_BACKUP 1  // backup ota info
 
 #define FLASH_APP_ID_FACTORY 0
 #define FLASH_APP_ID_APP1 1
@@ -69,8 +72,9 @@ typedef union {
         uint8_t ldr : 1;                // whether running in bootloader mode
         uint8_t onchip_app_valid : 1;   // whether on-chip application is valid
         uint8_t onchip_meta_valid : 1;  // whether on-chip factory metadata is valid
-        uint8_t id : 2;                 // current running application id, 0: factory, 1: app1, 2: app2
-        uint8_t resv : 2;
+        uint8_t appid : 2;              // current running application id, 0: factory, 1: app1, 2: app2
+        uint8_t otaid : 1;              // current smaller seq ota info id, 0: master, 1: backup
+        uint8_t resv : 1;               // reserved
     } st;
 } system_context_t;
 
@@ -78,22 +82,22 @@ typedef union {
 
 //////////////////////////// on-chip flash partition ////////////////////////////
 
-#define LDR_SIZE 0x2000                                             // bootloader flash space = 8KB, at the beginning of on-chip flash
+#define LDR_SIZE 0x2600                                             // bootloader flash space = 9.5KB, at the beginning of on-chip flash
 #define FACTORY_META_SIZE 0x200                                     // factory metadata space = 512B, after bootloader
-#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 55.5KB, after metadata
+#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 54KB, after metadata
 #define IAP_ADDR_FACTORY_META LDR_SIZE                              // factory metadata address for IAP functions
 #define IAP_ADDR_APP_START (LDR_SIZE + FACTORY_META_SIZE)           // application start address for IAP functions
 #define IAP_ADDR_APP_END (IAP_ADDR_APP_START + APP_MAX_SIZE)        // application end address for IAP functions
 
 //////////////////////////// off-chip flash partition ////////////////////////////
 
-#define NORFLASH_OTA_INFO_ADDR 0x0000UL                                          // ota info address in norflash
-#define NORFLASH_OTA_INFO_SIZE 0x1000UL                                          // ota info size in norflash = 4KB
-#define NORFLASH_OTA_BAK_ADDR (NORFLASH_OTA_INFO_ADDR + NORFLASH_OTA_INFO_SIZE)  // ota backup address in norflash
-#define NORFLASH_APP_SIZE 0xF0000UL                                              // application size in norflash = 60KB
-#define NORFLASH_FACTORY_APP_ADDR (NORFLASH_OTA_INFO_SIZE * 2)                   // factory application address in norflash
-#define NORFLASH_APP1_ADDR (NORFLASH_FACTORY_APP_ADDR + NORFLASH_APP_SIZE)       // ota application 1 address in norflash
-#define NORFLASH_APP2_ADDR (NORFLASH_APP1_ADDR + NORFLASH_APP_SIZE)              // ota application 2 address in norflash
+#define NORFLASH_OTA_INFO_SIZE 0x1000UL                                                // ota info size in norflash = 4KB
+#define NORFLASH_OTA_MASTER_ADDR 0x0000UL                                              // ota master address in norflash
+#define NORFLASH_OTA_BACKUP_ADDR (NORFLASH_OTA_MASTER_ADDR + NORFLASH_OTA_INFO_SIZE)   // ota backup address in norflash
+#define NORFLASH_APP_SIZE 0xF0000UL                                                    // application size in norflash = 60KB
+#define NORFLASH_FACTORY_APP_ADDR (NORFLASH_OTA_BACKUP_ADDR + NORFLASH_OTA_INFO_SIZE)  // factory application address in norflash
+#define NORFLASH_APP1_ADDR (NORFLASH_FACTORY_APP_ADDR + NORFLASH_APP_SIZE)             // ota application 1 address in norflash
+#define NORFLASH_APP2_ADDR (NORFLASH_APP1_ADDR + NORFLASH_APP_SIZE)                    // ota application 2 address in norflash
 
 #if NORFLASH_APP_SIZE < APP_MAX_SIZE
 #error "NORFLASH_APP_SIZE must be >= APP_MAX_SIZE"
@@ -153,17 +157,27 @@ typedef struct {
 // 32 bytes
 typedef struct {
     flash_app_info_t info;  // retrieved from ota server
-    uint8_t id;             // which app is downloading, 1: ota1, 2: ota2
+    uint8_t appid;          // which app is downloading, 1: ota1, 2: ota2
     uint8_t resv[3];        // reserved
     uint32_t received;      // bytes received so far
     uint32_t crc;           // crc32 of bytes received so far
 } flash_app_download_ctx_t;
+
+#define invalidate_flash_app_download_ctx(ctx)                       \
+    do {                                                             \
+        invalidate_flash_app_info((ctx).info);                       \
+        (ctx).appid = 0; /* only 1,2 are valid, use 0 for invalid */ \
+        (ctx).received = 0;                                          \
+        (ctx).crc = 0;                                               \
+    } while (0)
 
 // ota info structure, stored in norflash, big endian
 // 100 bytes
 typedef struct {
     uint32_t seq;                    /* sequence number, incremented by 1 each time ota info is updated
                                       * which seq is larger, which ota info is newer
+                                      * which seq is smaller, which ota info is safe to write
+                                      * i don't believe seq will overflow.
                                       */
     uint8_t current_app;             // current running application id, 0: factory, 1: app1, 2: app2
     uint8_t resv[3];                 // reserved
@@ -179,12 +193,20 @@ typedef struct {
 
 //////////////////////////// common functions ////////////////////////////
 
-#define is_valid_on_chip_app_program()                                                                 \
-    ((*(uint8_t code *)(LDR_SIZE) == 0x02) &&            /* check if first op code is `LJMP addr16` */ \
-     (*(uint16_t code *)(LDR_SIZE + 1) >= LDR_SIZE + 3)) /* check if `addr16 >= LDR_SIZE + 3` */
+#define is_valid_on_chip_app_program()                                                                                     \
+    ((*(uint8_t code *)(IAP_ADDR_APP_START) == 0x02) &&                      /* check if first op code is `LJMP addr16` */ \
+     (*(uint16_t code *)(IAP_ADDR_APP_START + 1) >= IAP_ADDR_APP_START + 3)) /* check if `addr16 >= IAP_ADDR_APP_START + 3` */
 
-#define jump_to_on_chip_app_program(offset) ((void(code *)())(LDR_SIZE + (offset)))()
+#define jump_to_on_chip_app_program(offset) ((void(code *)())(IAP_ADDR_APP_START + (offset)))()
+
+#define version_major(v) (((v) >> 24) & 0xFF)
+#define version_minor(v) (((v) >> 16) & 0xFF)
+#define version_patch(v) ((v) & 0xFFFF)
 
 void delay_ms(uint16_t ms);
+
+// read ota master/backup to find out which ota info is older(smaller seq)
+// then set sysctx.st.otaid accordingly
+void findout_which_ota_info_is_older(void);
 
 #endif /* __COMMON_H__ */

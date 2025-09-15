@@ -43,6 +43,7 @@ const char *unsafe_u8_to_bits(uint8_t v) {
 }
 
 void check_factory_metadata(void);
+void copy_factory_app_to_norflash(void);
 
 void main() {
     delay();
@@ -53,6 +54,8 @@ void main() {
     sysctx.st.ldr = 1;  // indicate running in bootloader mode
     sysctx.st.onchip_app_valid = is_valid_on_chip_app_program();
     sysctx.st.onchip_meta_valid = false;
+    sysctx.st.appid = FLASH_APP_ID_FACTORY;
+    sysctx.st.otaid = FLASH_OTA_ID_MASTER;
     uart_init();
     enable_irq();
     led_run_on();
@@ -74,6 +77,9 @@ void main() {
         // check if its the first time boot after firmware upgrade
         debugf1("Valid application found, checking factory metadata");
         check_factory_metadata();
+        if (sysctx.st.onchip_meta_valid) {
+            copy_factory_app_to_norflash();
+        }
     }
 
     if (!sysctx.st.dfu) {  // check if the force DFU mode flag was set by application
@@ -224,10 +230,10 @@ void check_factory_metadata(void) {
     uint32_t crc = 0xFFFFFFFF, b;
     const uint32_t code mask = 0x80000000;
     const uint32_t code poly = 0x04C11DB7;
-    uint8_t xdata buf[256];
 
     // check if meta valid
-    iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(app_info_t));
+    // iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(app_info_t));
+    meta = *(app_info_t code *)IAP_ADDR_FACTORY_META;
     if (meta.size == 0 || meta.size > APP_MAX_SIZE) {
         sysctx.st.onchip_meta_valid = 0;
         debugf2("No factory metadata, size=0x%08lX", meta.size);
@@ -257,8 +263,14 @@ void check_factory_metadata(void) {
         return;
     }
 
+    // meta valid
     sysctx.st.onchip_meta_valid = 1;
-    debugf3("Factory metadata valid, size=0x%08lX, crc=0x%08lX", meta.size, (meta.crc));
+    debugf6("Factory metadata valid, size=0x%08lX, crc=0x%08lX, version=%bu.%bu.%u",
+            meta.size,
+            (meta.crc),
+            version_major(meta.version),
+            version_minor(meta.version),
+            version_patch(meta.version));
 }
 
 // 上电时若检测到有片上合法固件，则将片上固件复制到外部Flash的Factory App区域，
@@ -266,6 +278,7 @@ void check_factory_metadata(void) {
 // 这是为了生产方便，第一次烧录完整64KB固件即可自动将出厂固件复制到外部Flash
 void copy_factory_app_to_norflash(void) {
     uint32_t iap_addr, flash_addr, i;
+    ota_info_t xdata ota_info, ota_verify;
 
     union {
         uint8_t total[NORFLASH_PAGE_SIZE];
@@ -277,14 +290,19 @@ void copy_factory_app_to_norflash(void) {
 
     debugf1("Copying factory app to norflash...");
 
-    // 1. copy factory app to norflash
+    /////////////////////////// 1. copy factory app to norflash ///////////////////////////
 
     // 1.1 erase factory app area
-    for (flash_addr = NORFLASH_FACTORY_APP_ADDR; flash_addr < NORFLASH_FACTORY_APP_ADDR + NORFLASH_APP_SIZE; flash_addr += NORFLASH_SECTOR_SIZE) {
+    debugf1("Erasing norflash factory app area...");
+    flash_addr = NORFLASH_FACTORY_APP_ADDR;
+    for (i = 0; i < NORFLASH_APP_SIZE; i += NORFLASH_SECTOR_SIZE) {
         norflash_erase_sector(flash_addr);
+        flash_addr += NORFLASH_SECTOR_SIZE;
     }
+    debugf1("Erase done.");
 
     // 1.2 copy data page by page
+    debugf1("Copying...");
     iap_addr = IAP_ADDR_APP_START;
     flash_addr = NORFLASH_FACTORY_APP_ADDR;
     for (i = 0; i < meta.size;) {
@@ -302,6 +320,7 @@ void copy_factory_app_to_norflash(void) {
     iap_addr = IAP_ADDR_APP_START;
     flash_addr = NORFLASH_FACTORY_APP_ADDR;
     for (i = 0; i < meta.size;) {
+        // its safe to use uint16_t here because meta.size <= APP_MAX_SIZE < 64KB
         uint16_t len = (meta.size - i);
         if (len > sizeof(buf.split.a)) {
             len = sizeof(buf.split.a);
@@ -317,6 +336,52 @@ void copy_factory_app_to_norflash(void) {
         iap_addr += len;
         flash_addr += len;
     }
+    debugf1("Verify success.");
 
-    // 2.
+    /////////////////////////// 2. update ota info ///////////////////////////
+
+    // 2.1 find out which ota info is older(smaller seq)
+    findout_which_ota_info_is_older();
+    // 2.2 read out the older ota info
+    if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
+        norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    } else {
+        norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    }
+    // 2.3 update ota info
+    ota_info.seq++;  // make it newer
+    ota_info.current_app = FLASH_APP_ID_FACTORY;
+    ota_info.factory.info = meta;
+    invalidate_flash_app_info(ota_info.app1);
+    invalidate_flash_app_info(ota_info.app2);
+    invalidate_flash_app_download_ctx(ota_info.dlctx);
+    // 2.4 write back the older ota info
+    if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
+        norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
+        norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    } else {
+        norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
+        norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    }
+    // 2.5 verify
+    if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
+        norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_verify, sizeof(ota_info_t));
+    } else {
+        norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_verify, sizeof(ota_info_t));
+    }
+    if (memcmp(&ota_info, &ota_verify, sizeof(ota_info_t)) != 0) {
+        debugf1("Ota info verify failed!");
+        sys_reset();
+        while (1);
+    }
+
+    /////////////////////////// 3. erase on-chip factory metadata ///////////////////////////
+    debugf1("Erasing on-chip factory metadata...");
+    if (!iap_erase_page_check(IAP_ADDR_FACTORY_META)) {
+        debugf1("Erase failed!");
+        sys_reset();
+        while (1);
+    }
+    debugf1("Erase done.");
+    sysctx.st.onchip_meta_valid = 0;
 }

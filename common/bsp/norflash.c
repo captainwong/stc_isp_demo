@@ -2,6 +2,18 @@
 
 uint16_t norflash_type = 0;
 
+static bool is_known_norflash_type(uint16_t type) {
+    switch (type) {
+#define XX(type, name) \
+    case type:         \
+        return true;
+        NORFLASH_TYPES_MAP(XX)
+#undef XX
+        default:
+            return false;
+    }
+}
+
 static void norflash_wait_busy(void) {
     /* B0 in Status Register-1 is Erase/Write In Progress(BUSY) - status only bit
     BUSY is a read only bit in the status register (S0) that is set to a 1 state when the device is executing a
@@ -52,7 +64,7 @@ bool norflash_init(void) {
     norflash_powerup();
     norflash_read_id();
 
-    if (norflash_type == 0) {
+    if (!is_known_norflash_type(norflash_type)) {
         return false;
     }
 
