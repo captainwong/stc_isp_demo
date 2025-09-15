@@ -22,6 +22,7 @@ void uart_debug(const char* fmt, ...);
 #define debugf4(fmt, _1, _2, _3) uart_debug(fmt, _1, _2, _3)
 #define debugf5(fmt, _1, _2, _3, _4) uart_debug(fmt, _1, _2, _3, _4)
 #define debugf6(fmt, _1, _2, _3, _4, _5) uart_debug(fmt, _1, _2, _3, _4, _5)
+#define debugf7(fmt, _1, _2, _3, _4, _5, _6) uart_debug(fmt, _1, _2, _3, _4, _5, _6)
 #else
 #define debugf1(fmt)
 #define debugf2(fmt, _1)
@@ -29,6 +30,7 @@ void uart_debug(const char* fmt, ...);
 #define debugf4(fmt, _1, _2, _3)
 #define debugf5(fmt, _1, _2, _3, _4)
 #define debugf6(fmt, _1, _2, _3, _4, _5)
+#define debugf7(fmt, _1, _2, _3, _4, _5, _6)
 #endif /* DEBUG */
 
 #endif /* __UART_H__ */

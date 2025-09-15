@@ -16,7 +16,7 @@
             snprintf(tmp, sizeof(tmp), "%02X", (uint8_t)c); \
             sl.append(tmp);                                 \
         }                                                   \
-        MYQDEBUG << arr.length() << sl.join(" ");           \
+        MYQDEBUG3 << arr.length() << sl.join(" ");           \
     } while (0);
 
 inline QString bytes2string(const uint8_t* buf, size_t len) {
@@ -47,7 +47,9 @@ public:
     void read_chip_version();
     void read_rom(uint16_t addr, uint8_t size);
     void erase_all();
+    void erase_page(uint16_t addr);
     void program_bin(uint16_t addr, const QByteArray& bin);
+    void calc_crc32(const QByteArray& data);
 
     void read_flash_size();
     void erase_flash();

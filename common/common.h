@@ -14,9 +14,9 @@
  *   - 512B page erase
  *   - 512B page program
  *   - partition: aiapp-isp: set user eeprom size to 64KB
- *      - 0x0000 - 0x25FF : 9.5KB for bootloader
- *      - 0x2600 - 0x27FF : 512B for factory metadata
- *      - 0x2800 - 0xFFFF : 54KB for application
+ *      - 0x0000 - 0x27FF : 10KB for bootloader
+ *      - 0x2800 - 0x29FF : 512B for factory metadata
+ *      - 0x2A00 - 0xFFFF : 53.5KB for application
  * norflash: W25Q32JVSIQ (32Mbit, 4MB)
  *   - 4KB sector erase
  *   - 256B page program
@@ -82,9 +82,9 @@ typedef union {
 
 //////////////////////////// on-chip flash partition ////////////////////////////
 
-#define LDR_SIZE 0x2600                                             // bootloader flash space = 9.5KB, at the beginning of on-chip flash
+#define LDR_SIZE 0x2800                                             // bootloader flash space = 10KB, at the beginning of on-chip flash
 #define FACTORY_META_SIZE 0x200                                     // factory metadata space = 512B, after bootloader
-#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 54KB, after metadata
+#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 53.5KB, after metadata
 #define IAP_ADDR_FACTORY_META LDR_SIZE                              // factory metadata address for IAP functions
 #define IAP_ADDR_APP_START (LDR_SIZE + FACTORY_META_SIZE)           // application start address for IAP functions
 #define IAP_ADDR_APP_END (IAP_ADDR_APP_START + APP_MAX_SIZE)        // application end address for IAP functions
@@ -199,9 +199,9 @@ typedef struct {
 
 #define jump_to_on_chip_app_program(offset) ((void(code *)())(IAP_ADDR_APP_START + (offset)))()
 
-#define version_major(v) (((v) >> 24) & 0xFF)
-#define version_minor(v) (((v) >> 16) & 0xFF)
-#define version_patch(v) ((v) & 0xFFFF)
+#define version_major(v) (uint8_t)(((v) >> 24) & 0xFF)
+#define version_minor(v) (uint8_t)(((v) >> 16) & 0xFF)
+#define version_patch(v) (uint16_t)((v) & 0xFFFF)
 
 void delay_ms(uint16_t ms);
 

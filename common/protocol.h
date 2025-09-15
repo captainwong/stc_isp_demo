@@ -64,8 +64,9 @@ extern "C" {
 #define ISP_CMD_CONNECT 0xA0
 #define ISP_CMD_READ 0xA1
 #define ISP_CMD_PROGRAM 0xA2
-#define ISP_CMD_ERASE 0xA3
+#define ISP_CMD_ERASE_APP_AREA 0xA3
 #define ISP_CMD_REBOOT 0xA4
+#define ISP_CMD_ERASE_PAGE 0xA5  // erase 1 page
 // B* programmer <--> bootloader/app
 #define ISP_CMD_READ_CHIP_INFO 0xB0
 #define ISP_CMD_READ_CHIP_VERSION 0xB1
@@ -76,6 +77,7 @@ extern "C" {
 #define ISP_CMD_PROGRAM_W25Q 0xB6
 #define ISP_CMD_READ_LDR_VERSION 0xB7  // read bootloader version & build time
 #define ISP_CMD_READ_APP_VERSION 0xB8  // read application version & build time
+#define ISP_CMD_CALC_CRC32 0xB9        // calculate crc32 of given data
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
@@ -126,6 +128,7 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_UNKNOWN_CMD 1
 #define LDR_STATUS_ADDR_OUT_OF_RANGE 2
 #define LDR_STATUS_PROGRAM_FAILED 3
+#define LDR_STATUS_ERASE_PAGE_FAILED 4
 #define LDR_STATUS_CHIP_INFO 0x80
 #define LDR_STATUS_CHIP_VERSION 0x81
 #define LDR_STATUS_LOG 0x82
@@ -137,6 +140,7 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_W25Q_PROGRAM_RES 0x88
 #define LDR_STATUS_LDR_VERSION 0x89
 #define LDR_STATUS_APP_VERSION 0x8A
+#define LDR_STATUS_CALC_CRC32_RES 0x8B
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];

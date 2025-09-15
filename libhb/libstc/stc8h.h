@@ -1854,8 +1854,8 @@ declare_sfr(0xFF, RSTCFG);  // Reset Configuration Register, Reset Value = x0x0,
         IAP_CONTR = 0;    /* disable iap */              \
         IAP_CMD = 0;      /* clear cmd to standby */     \
         IAP_TRIG = 0;     /* clear trigger register */   \
-        IAP_ADDRH = 0x80; /* set addr to non-iap area */ \
-        IAP_ADDRL = 0x00; /* to avoid false operation */ \
+        IAP_ADDRH = 0xFF; /* set addr to non-iap area */ \
+        IAP_ADDRL = 0xFF; /* to avoid false operation */ \
     } while (0)
 
 /**

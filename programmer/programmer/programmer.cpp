@@ -4,10 +4,10 @@
 #include <jlib/jlib/qt/QtPathHelper.h>
 #include <jlib/jlib/qt/darkmode.h>
 #include <libemb/emb_bitrev.h>
+#include <libhbcheck/libhbcheck.h>
 #include <libstc/disassembler/hex80.h>
 #include <libstc/disassembler/intel8051is.h>
 #include <libstc/stc8h.h>
-#include <libhbcheck/libhbcheck.h>
 
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -41,8 +41,8 @@ constexpr const int COMMON_BAUDS[] = {
 
 #define DEFAULT_COM "COM22"
 #define DEFAULT_BAUD 115200
-#define DEFAULT_LDR_SIZE (9216 + 512)  // 9.5KB
-#define DEFAULT_META_SIZE 512          // 0.5KB
+#define DEFAULT_LDR_SIZE (10240)  // 10KB
+#define DEFAULT_META_SIZE 512     // 0.5KB
 
 programmer::programmer(QWidget* parent)
     : QDialog(parent) {
@@ -88,7 +88,7 @@ programmer::programmer(QWidget* parent)
     pb = new QProgressBar(grpE2);
     pb->setRange(0, E2_EMPTY_SIZE);
 
-    lblRomSize = new QLabel(tr("ROM Size:"), this);
+    lblRomSize = new QLabel(tr("ROM Size(hex):"), this);
     leRomSize = new QLineEdit(this);
     leRomSize->setReadOnly(true);
     leRomSize->setMaximumWidth(60);
@@ -195,12 +195,24 @@ programmer::programmer(QWidget* parent)
     connect(btnProgram, &QPushButton::clicked, this, &programmer::slotProgram);
     btnReboot = new QPushButton(tr("Reboot"), this);
     connect(btnReboot, &QPushButton::clicked, this, &programmer::slotReboot);
-    lblReadOffset = new QLabel(tr("Offset:"), this);
-    leReadOffset = new QLineEdit("0", this);
-    lblReadLen = new QLabel(tr("Length:"), this);
-    leReadLen = new QLineEdit(this);
+    lblReadOffset = new QLabel(tr("Offset(hex):"), this);
+    leReadOffset = new QLineEdit("0x2800", this);
+    leReadOffset->setMaximumWidth(80);
+    lblReadLen = new QLabel(tr("Length(hex):"), this);
+    leReadLen = new QLineEdit("0x200", this);
+    leReadLen->setMaximumWidth(80);
     btnReadRom = new QPushButton(tr("Read ROM"), this);
     connect(btnReadRom, &QPushButton::clicked, this, &programmer::slotReadRom);
+    btnErasePage = new QPushButton(tr("Erase Page"), this);
+    connect(btnErasePage, &QPushButton::clicked, this, &programmer::slotErasePage);
+    lblCrcData = new QLabel(tr("CRC32:"), this);
+    leCrcData = new QLineEdit(this);
+    leCrc32 = new QLineEdit(this);
+    leCrc32->setReadOnly(true);
+    btnRandomCrcData = new QPushButton(tr("Random"), this);
+    connect(btnRandomCrcData, &QPushButton::clicked, this, &programmer::slotRandomCrcData);
+    btnCalcCrc32 = new QPushButton(tr("Calc"), this);
+    connect(btnCalcCrc32, &QPushButton::clicked, this, &programmer::slotCalcCrc32);
     {
         auto grid = new QGridLayout();
         int row = 0;
@@ -227,12 +239,21 @@ programmer::programmer(QWidget* parent)
         line3->addWidget(lblReadLen);
         line3->addWidget(leReadLen);
         line3->addWidget(btnReadRom);
+        line3->addWidget(btnErasePage);
+
+        auto line4 = new QHBoxLayout();
+        line4->addWidget(lblCrcData);
+        line4->addWidget(leCrcData, 1);
+        line4->addWidget(leCrc32);
+        line4->addWidget(btnRandomCrcData);
+        line4->addWidget(btnCalcCrc32);
 
         auto ldrLayout = new QVBoxLayout();
         ldrLayout->addLayout(grid);
         ldrLayout->addLayout(line);
         ldrLayout->addLayout(line2);
         ldrLayout->addLayout(line3);
+        ldrLayout->addLayout(line4);
         grpLdr->setLayout(ldrLayout);
     }
 
@@ -357,7 +378,7 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
                 // leLdrOutput->moveCursor(QTextCursor::End);
                 // leLdrOutput->insertPlainText("OK\n");
                 // leLdrOutput->moveCursor(QTextCursor::End);
-                MYQDEBUG2_NOQUOTE << "OK";
+                MYQDEBUG3_NOQUOTE << "OK";
             }
             break;
         case LDR_STATUS_LDR_VERSION: {
@@ -394,40 +415,43 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             // leLdrOutput->moveCursor(QTextCursor::End);
             // leLdrOutput->insertPlainText("Unknow CMD\n");
             // leLdrOutput->moveCursor(QTextCursor::End);
-            MYQWARN2 << "Unknow CMD";
+            MYQWARN3 << "Unknow CMD";
             break;
         case LDR_STATUS_ADDR_OUT_OF_RANGE:
             // leLdrOutput->moveCursor(QTextCursor::End);
             // leLdrOutput->insertPlainText("Address Out Of Range\n");
             // leLdrOutput->moveCursor(QTextCursor::End);
-            MYQWARN2 << "Address Out Of Range";
+            MYQWARN3 << "Address Out Of Range";
             break;
         case LDR_STATUS_PROGRAM_FAILED:
             // leLdrOutput->moveCursor(QTextCursor::End);
             // leLdrOutput->insertPlainText("Program Failed\n");
             // leLdrOutput->moveCursor(QTextCursor::End);
-            MYQWARN2 << "Program Failed";
+            MYQWARN3 << "Program Failed";
+            break;
+        case LDR_STATUS_ERASE_PAGE_FAILED:
+            MYQWARN3 << "Erase Page Failed";
             break;
         case LDR_STATUS_CHIP_INFO:
             // leLdrOutput->moveCursor(QTextCursor::End);
             // leLdrOutput->insertPlainText(chipInfo2String((stc_chipid_t*)&pkt->pkt.dat[0]));
             // leLdrOutput->moveCursor(QTextCursor::End);
-            MYQDEBUG2_NOQUOTE << chipInfo2String((stc_chipid_t*)&pkt->pkt.dat[0]);
+            MYQDEBUG3_NOQUOTE << chipInfo2String((stc_chipid_t*)&pkt->pkt.dat[0]);
             serial->read_chip_version();
             break;
         case LDR_STATUS_CHIP_VERSION:
-            snprintf(sbuf, sizeof(sbuf), "Chip Version: %c\n", pkt->pkt.dat[0]);
+            snprintf(sbuf, sizeof(sbuf), "Chip Version: %c", pkt->pkt.dat[0]);
             // leLdrOutput->moveCursor(QTextCursor::End);
             // leLdrOutput->insertPlainText(sbuf);
             // leLdrOutput->moveCursor(QTextCursor::End);
-            MYQDEBUG2_NOQUOTE << sbuf;
+            MYQDEBUG3_NOQUOTE << sbuf;
             break;
         case LDR_STATUS_LOG: {
-            QString log = QString::fromLatin1((const char*)pkt->pkt.dat, pkt->pkt.size) + "\n";
+            QString log = QString::fromLatin1((const char*)pkt->pkt.dat, pkt->pkt.size);
             // leLdrOutput->moveCursor(QTextCursor::End);
             // leLdrOutput->insertPlainText(log);
             // leLdrOutput->moveCursor(QTextCursor::End);
-            MYQDEBUG2_NOQUOTE << log;
+            MYQDEBUG3_NOQUOTE << log;
             break;
         }
         case LDR_STATUS_ROM: {
@@ -438,11 +462,23 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             }
             e2.replace(offset, (pkt->pkt.size), QByteArray((const char*)pkt->pkt.dat, (pkt->pkt.size)));
             doc->setData(e2);
+            view->scrollToAddress(offset);
 
             e2recv += (pkt->pkt.size);
             pb->setValue(e2recv);
-            if (e2recv < leReadLen->text().toUInt()) {
+            if (e2recv < leReadLen->text().toUInt(nullptr, 16)) {
                 read_rom();
+            }
+            break;
+        }
+
+        case LDR_STATUS_CALC_CRC32_RES: {
+            if (pkt->pkt.size == 4) {
+                uint32_t crc = *(uint32_t*)&pkt->pkt.dat[0];
+                crc = rev32(crc);
+                snprintf(sbuf, sizeof(sbuf), "%08X", crc);
+                bool equ = leCrc32->text().compare(sbuf, Qt::CaseInsensitive) == 0;
+                MYQDEBUG3_NOQUOTE << "MY:" << leCrc32->text() << "\nMCU CRC32: " << sbuf << " " << (equ ? "(Equal)" : "(Not Equal)");
             }
             break;
         }
@@ -467,13 +503,13 @@ void programmer::slotOpen() {
     QString dir{};
 #ifdef _DEBUG
     QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
-    MYQDEBUG << d.absolutePath();
+    MYQDEBUG3 << d.absolutePath();
     d.cdUp();
-    MYQDEBUG << d.absolutePath();
+    MYQDEBUG3 << d.absolutePath();
     d.cdUp();
-    MYQDEBUG << d.absolutePath();
+    MYQDEBUG3 << d.absolutePath();
     dir = d.absolutePath() + "/app/output";
-    MYQDEBUG << dir;
+    MYQDEBUG3 << dir;
 #endif
 
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"), dir, supportedFormats);
@@ -498,7 +534,7 @@ void programmer::slotOpen() {
         doc->setData(e2);
         pb->setRange(0, e2.size());
         pb->setValue(0);
-        leRomSize->setText(QString::number(e2.size()));
+        leRomSize->setText("0x" + QString::number(e2.size(), 16));
     } else if (fileName.endsWith(".hex", Qt::CaseInsensitive)) {
         std::vector<hex80_code_snippet_t> snippets;
         if (!tryParseHex80File(dat.toStdString(), snippets)) {
@@ -534,7 +570,7 @@ void programmer::slotOpen() {
         disasmOutput->setPlainText(QString::fromStdString(result));
         pb->setRange(0, e2.size());
         pb->setValue(0);
-        leRomSize->setText(QString::number(e2.size()));
+        leRomSize->setText("0x" + QString::number(e2.size(), 16));
     } else {
         QMessageBox::warning(this, tr("Error"), tr("Unsupported file format"));
     }
@@ -563,7 +599,7 @@ void programmer::slotPatch() {
     doc->setData(e2);
     pb->setRange(0, e2.size());
     pb->setValue(0);
-    leRomSize->setText(QString::number(e2.size()));
+    leRomSize->setText("0x" + QString::number(e2.size(), 16));
 
     std::string result;
     int r = disasm(0, (const uint8_t*)e2.constData(), e2.size(), result);
@@ -578,12 +614,9 @@ void programmer::slotMerge() {
     uint16_t ldr_size = (int)(cmbBootloaderSize->currentText().toFloat() * 1024) & 0xFFFF;
     uint16_t meta_size = (int)(cmbMetaSize->currentText().toFloat() * 1024) & 0xFFFF;
     uint16_t ldr_meta_size = ldr_size + meta_size;
-    if (ldr_meta_size >= (size_t)e2.size()) {
-        QMessageBox::critical(this, tr("Error"), tr("Bootloader/Meta size exceeds or equals to ROM size"));
-        return;
-    }
 
-    const QString supportedFormats = "Hex80 Files (*.hex);;All Files (*.*)";
+    const QString hexFormats = "Hex80 Files (*.hex);;All Files (*.*)";
+    const QString binFormats = "Binary Files (*.bin);;All Files (*.*)";
     QString dir{};
 #ifdef _DEBUG
     {
@@ -594,10 +627,15 @@ void programmer::slotMerge() {
     }
 #endif
 
-    QString bootloader, userapp, allin1;
+    QString bootloader, metabin, userapp, allin1;
     std::vector<hex80_code_snippet_t> ldr_snippets, user_snippets, allin1_snippets;
 
-    bootloader = QFileDialog::getOpenFileName(this, tr("Open Bootloader Hex File"), dir, supportedFormats);
+#ifdef _DEBUG
+    bootloader = dir + "/BOOTLOADER.hex";
+#else
+    bootloader = QFileDialog::getOpenFileName(this, tr("Open Bootloader Hex File"), dir, hexFormats);
+#endif
+
     if (bootloader.isEmpty()) {
         return;
     }
@@ -626,7 +664,33 @@ void programmer::slotMerge() {
         dir = d.absolutePath() + "/app/output";
     }
 #endif
-    userapp = QFileDialog::getOpenFileName(this, tr("Open User Application Hex File"), dir, supportedFormats);
+
+#ifdef _DEBUG
+    metabin = dir + "/meta.bin";
+#else
+    metabin = QFileDialog::getOpenFileName(this, tr("Open Meta Data Bin File"), dir, binFormats);
+#endif
+
+    if (metabin.isEmpty()) {
+        return;
+    }
+    QFile mfile(metabin);
+    if (!mfile.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open meta data bin file"));
+        return;
+    }
+    QByteArray mdat = mfile.readAll();
+    if (mdat.length() != 16 || mdat.length() > meta_size) {
+        QMessageBox::critical(this, tr("Error"), tr("Meta data bin file size does not match the selected meta size"));
+        return;
+    }
+
+#ifdef _DEBUG
+    userapp = dir + "/APP.hex";
+#else
+    userapp = QFileDialog::getOpenFileName(this, tr("Open User Application Hex File"), dir, hexFormats);
+#endif
+
     if (userapp.isEmpty()) {
         return;
     }
@@ -679,17 +743,55 @@ void programmer::slotMerge() {
         std::copy(snippet.dat.begin(), snippet.dat.end(), e2.begin() + snippet.addr);
     }
 
-    // generate meta data
+    // verify and copy meta data
     {
-        uint16_t app_size = (e2size - ldr_meta_size) & 0xFFFF;
-        uint32_t crc = hb_crc32((uint8_t*)e2.constData() + ldr_meta_size, app_size);
+        typedef struct {
+            uint32_t size;       // size of the whole application binary
+            uint32_t crc;        // crc32 of the whole application binary
+            uint32_t timestamp;  // UTC timestamp
+            uint32_t version;    // major(8).minor(8).patch(16)
+        } app_info_t;
+
+        app_info_t meta = *(app_info_t*)(mdat.constData());
+
+        // to little endian
+        meta.size = rev32(meta.size);
+        meta.crc = rev32(meta.crc);
+        meta.timestamp = rev32(meta.timestamp);
+        meta.version = rev32(meta.version);
+        MYQDEBUG3 << "Meta Data:"
+                  << "\n Size:" << QString::number(meta.size, 16)
+                  << "\n CRC32:" << QString::number(meta.crc, 16)
+                  << "\n Timestamp:" << QString::number(meta.timestamp, 16)
+                  << "\n Version:" << QString::number(meta.version, 16);
+
+        uint16_t my_app_size = e2.size() - ldr_meta_size;
+        uint32_t my_crc32 = hb_crc32((const uint8_t*)e2.constData() + ldr_meta_size, my_app_size);
+        if (meta.size != my_app_size) {
+            MYQCRITICAL3_NOQUOTE << "Application size mismatch! Meta:" << QString::number(meta.size, 16)
+                                 << "Actual:" << QString::number(my_app_size, 16);
+            QMessageBox::critical(this, tr("Error"), tr("Application size in meta data does not match the actual size"));
+            return;
+        }
+        if (meta.crc != my_crc32) {
+            MYQCRITICAL3_NOQUOTE << "Application CRC32 mismatch! Meta:" << QString::number(meta.crc, 16)
+                                 << "Actual:" << QString::number(my_crc32, 16);
+            QMessageBox::critical(this, tr("Error"), tr("Application CRC32 in meta data does not match the actual CRC32"));
+            return;
+        }
+
+        // copy meta data
+        uint16_t i = 0;
+        for (; i < mdat.size(); i++) {
+            e2[ldr_size + i] = mdat[i];
+        }
     }
 
     doc->setData(e2);
     disasmOutput->setPlainText(QString::fromStdString(result));
     pb->setRange(0, e2.size());
     pb->setValue(0);
-    leRomSize->setText(QString::number(e2.size()));
+    leRomSize->setText("0x" + QString::number(e2.size(), 16));
 
 #ifdef _DEBUG
     {
@@ -699,7 +801,13 @@ void programmer::slotMerge() {
         dir = d.absolutePath() + "/bootloader/output";
     }
 #endif
-    allin1 = QFileDialog::getSaveFileName(this, tr("Save Merged Hex File"), dir + "/allin1.hex", supportedFormats);
+
+#ifdef _DEBUG
+    allin1 = dir + "/allin1.bin";
+#else
+    allin1 = QFileDialog::getSaveFileName(this, tr("Save Merged Hex File"), dir, binFormats);
+#endif
+
     if (allin1.isEmpty()) {
         return;
     }
@@ -749,22 +857,45 @@ void programmer::slotReboot() {
 
 void programmer::slotReadRom() {
     e2recv = 0;
-    pb->setRange(0, leReadLen->text().toUInt());
+    pb->setRange(0, leReadLen->text().toUInt(nullptr, 16));
     pb->setValue(0);
     read_rom();
 }
 
+void programmer::slotErasePage() {
+    uint16_t addr = leReadOffset->text().toUInt(nullptr, 16);
+    serial->erase_page(addr & 0xFFFF);
+}
+
+void programmer::slotRandomCrcData() {
+    QByteArray dat(16, 0);
+    for (int i = 0; i < dat.size(); i++) {
+        dat[i] = qrand() & 0xFF;
+    }
+    dat = dat.toHex().toUpper();
+    leCrcData->setText(dat);
+    uint32_t crc = hb_crc32((uint8_t*)dat.constData(), dat.size());
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%08X", crc);
+    leCrc32->setText(buf);
+}
+
+void programmer::slotCalcCrc32() {
+    QByteArray dat = leCrcData->text().toUtf8();
+    serial->calc_crc32(dat);
+}
+
 void programmer::program() {
     auto bin = e2.mid(e2sent, 128);
-    MYQDEBUG << "Programming" << QString::number(e2sent, 16) << "size=" << bin.size();
-    serial->program_bin(rev16(e2sent), bin);
+    MYQDEBUG3 << "Programming" << QString::number(e2sent, 16) << "size=" << bin.size();
+    serial->program_bin((e2sent) & 0xFFFF, bin);
     e2sent += bin.size();
     pb->setValue(e2sent);
 }
 
 void programmer::read_rom() {
-    uint16_t addr = leReadOffset->text().toUInt();
-    size_t size = leReadLen->text().toUInt();
+    uint16_t addr = leReadOffset->text().toUInt(nullptr, 16);
+    size_t size = leReadLen->text().toUInt(nullptr, 16);
     size -= addr + e2recv;
     if (size > 128) {
         size = 128;

@@ -186,13 +186,13 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
             break;
         }
         case LDR_STATUS_W25Q_ERASE_ALL_RES:
-            MYQDEBUG2_NOQUOTE << "Flash erase all OK";
+            MYQDEBUG3_NOQUOTE << "Flash erase all OK";
             break;
 
         case LDR_STATUS_W25Q_ERASE_SECTOR_RES: {
             uint32_t addr = *(uint32_t*)&pkt->pkt.dat[0];
             snprintf(sbuf, sizeof(sbuf), "Flash erase sector 0x%06X OK", addr);
-            MYQDEBUG2_NOQUOTE << sbuf;
+            MYQDEBUG3_NOQUOTE << sbuf;
             break;
         }
 
@@ -200,7 +200,7 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
             uint32_t addr = *(uint32_t*)&pkt->pkt.dat[0];
             uint8_t size = pkt->pkt.size - 4;  // first 4 bytes are address
             if ((size_t)addr + size > (size_t)e2.size()) {
-                MYQCRITICAL2_NOQUOTE << "Received data exceeds flash size!";
+                MYQCRITICAL3_NOQUOTE << "Received data exceeds flash size!";
                 return;
             }
             memcpy(e2.data() + addr, &pkt->pkt.dat[4], size);
@@ -211,7 +211,7 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
             if (e2recvd < e2recv) {
                 read_next_chunk();
             } else {
-                MYQDEBUG2_NOQUOTE << "Flash read OK";
+                MYQDEBUG3_NOQUOTE << "Flash read OK";
             }
             break;
         }
@@ -223,7 +223,7 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
 
                 // check if the data is correct
                 if (memcmp(e2.constData() + addr, &pkt->pkt.dat[4], size) != 0) {
-                    MYQCRITICAL2_NOQUOTE << "Program data verification failed!";
+                    MYQCRITICAL3_NOQUOTE << "Program data verification failed!";
                     return;
                 }
 
@@ -232,10 +232,10 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
                 if (e2sent < e2send) {
                     program_next_chunk();
                 } else {
-                    MYQDEBUG2_NOQUOTE << "Flash program OK";
+                    MYQDEBUG3_NOQUOTE << "Flash program OK";
                 }
             } else {
-                MYQCRITICAL2_NOQUOTE << "Program address mismatch!";
+                MYQCRITICAL3_NOQUOTE << "Program address mismatch!";
             }
             break;
         }

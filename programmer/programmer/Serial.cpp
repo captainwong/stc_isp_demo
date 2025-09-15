@@ -1,6 +1,7 @@
 #include "Serial.h"
 
 #include <jlib/jlib/qt/QtDebug.h>
+#include <libemb/emb_bitrev.h>
 
 Serial::Serial(QObject* parent) : QSerialPort(parent) {
     connect(this, &QSerialPort::readyRead, this, &Serial::slot_serial_on_read);
@@ -8,7 +9,8 @@ Serial::Serial(QObject* parent) : QSerialPort(parent) {
 
 void Serial::slot_serial_on_read() {
     auto _all = readAll();
-    qdebug_qbytes(_all);
+    // qdebug_qbytes(_all);
+    MYQDEBUG3 << "RX" << _all.length() << bytes2string(_all);
 
     for (auto c : _all) {
         ldr_parse(&ctx, &rx, c);
@@ -32,7 +34,7 @@ void Serial::read_rom(uint16_t addr, uint8_t size) {
     tx.pkt.head = ISP_PKT_HEAD;
     tx.pkt.len = 6;
     tx.pkt.cmd = ISP_CMD_READ;
-    tx.pkt.addr = addr;
+    tx.pkt.addr = rev16(addr);
     tx.pkt.size = size;
     isp_pkt_end(&tx) = ISP_PKT_END;
     send_tx(&tx);
@@ -87,7 +89,17 @@ void Serial::erase_all() {
     isp_packet_t tx = {0};
     tx.pkt.head = ISP_PKT_HEAD;
     tx.pkt.len = 6;
-    tx.pkt.cmd = ISP_CMD_ERASE;
+    tx.pkt.cmd = ISP_CMD_ERASE_APP_AREA;
+    isp_pkt_end(&tx) = ISP_PKT_END;
+    send_tx(&tx);
+}
+
+void Serial::erase_page(uint16_t addr) {
+    isp_packet_t tx = {0};
+    tx.pkt.head = ISP_PKT_HEAD;
+    tx.pkt.len = 6;
+    tx.pkt.cmd = ISP_CMD_ERASE_PAGE;
+    tx.pkt.addr = rev16(addr);
     isp_pkt_end(&tx) = ISP_PKT_END;
     send_tx(&tx);
 }
@@ -97,10 +109,22 @@ void Serial::program_bin(uint16_t addr, const QByteArray& bin) {
     tx.pkt.head = ISP_PKT_HEAD;
     tx.pkt.len = 6 + bin.size();
     tx.pkt.cmd = ISP_CMD_PROGRAM;
-    tx.pkt.addr = addr;
+    tx.pkt.addr = rev16(addr);
     tx.pkt.size = bin.size() & 0xFF;
     isp_pkt_end(&tx) = ISP_PKT_END;
     memcpy(tx.pkt.dat, bin.constData(), bin.size());
+    send_tx(&tx);
+}
+
+void Serial::calc_crc32(const QByteArray& data) {
+    isp_packet_t tx = {0};
+    tx.pkt.head = ISP_PKT_HEAD;
+    tx.pkt.len = 6 + data.size();
+    tx.pkt.cmd = ISP_CMD_CALC_CRC32;
+    tx.pkt.addr = 0;
+    tx.pkt.size = data.size() & 0xFF;
+    isp_pkt_end(&tx) = ISP_PKT_END;
+    memcpy(tx.pkt.dat, data.constData(), data.size());
     send_tx(&tx);
 }
 
@@ -161,6 +185,7 @@ void Serial::program_flash(uint32_t addr, const QByteArray& bin) {
 void Serial::send_tx(isp_packet_t* tx) {
     isp_pkt_sum(tx) = isp_pkt_calc_sum(tx);
     auto dat = QByteArray((const char*)tx->buf, isp_pkt_len(tx));
-    qdebug_qbytes(dat);
+    // qdebug_qbytes(dat);
+    MYQDEBUG3 << "TX" << dat.length() << bytes2string(dat);
     write(dat);
 }

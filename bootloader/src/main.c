@@ -59,6 +59,8 @@ void main() {
     uart_init();
     enable_irq();
     led_run_on();
+    enable_xsfr();  // for xsfr `IAP_TPS`
+    iap_tps(iap_calc_tps(MAIN_Fosc));
 
     while (!norflash_init()) {
         debugf1("Norflash init failed");
@@ -99,8 +101,6 @@ void main() {
 
     debugf1("bootloader running");
     sysctx.st.dfu = 0;  // clear force DFU mode flag
-    enable_xsfr();      // for xsfr `IAP_TPS`
-    iap_tps(iap_calc_tps(MAIN_Fosc));
     cycles = 0;
 
     while (1) {
@@ -140,19 +140,24 @@ void isp_handle(void) {
         case ISP_CMD_READ:
             tx.pkt.status = LDR_STATUS_ROM;
             tx.pkt.size = rx.pkt.size;
-            iap_read_bytes(IAP_ADDR_APP_START + addr, tx.pkt.dat, rx.pkt.size);
+            iap_read_bytes(addr, tx.pkt.dat, rx.pkt.size);
             break;
         case ISP_CMD_PROGRAM:
             if (!iap_write_bytes_check(IAP_ADDR_APP_START + addr, rx.pkt.dat, rx.pkt.size)) {
                 tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
             }
             break;
-        case ISP_CMD_ERASE:
+        case ISP_CMD_ERASE_APP_AREA:
             for (addr = IAP_ADDR_APP_START; addr < IAP_ADDR_APP_END; addr += IAP_PAGE_SIZE) {
                 if (!iap_erase_page_check(addr)) {
                     tx.pkt.status = LDR_STATUS_PROGRAM_FAILED;
                     break;
                 }
+            }
+            break;
+        case ISP_CMD_ERASE_PAGE:
+            if (!iap_erase_page_check(addr)) {
+                tx.pkt.status = LDR_STATUS_ERASE_PAGE_FAILED;
             }
             break;
         case ISP_CMD_REBOOT:
@@ -212,6 +217,35 @@ void isp_handle(void) {
             tx.pkt.size = 4 + rx.pkt.size;
             tx.pkt.status = LDR_STATUS_W25Q_PROGRAM_RES;
             break;
+        case ISP_CMD_CALC_CRC32: {
+            uint8_t dat, j;
+            uint16_t i;
+            uint32_t crc = 0xFFFFFFFF, b;
+            const uint32_t code mask = 0x80000000;
+            const uint32_t code poly = 0x04C11DB7;
+
+            for (i = 0; i < rx.pkt.size; i++) {
+                dat = rx.pkt.dat[i];
+                dat = bitrev8(dat);
+                for (j = 0x80; j; j >>= 1) {
+                    b = crc & mask;
+                    crc <<= 1;
+                    if (dat & j) {
+                        b ^= mask;
+                    }
+                    if (b) {
+                        crc ^= poly;
+                    }
+                }
+            }
+            crc = bitrev32(crc);
+            crc ^= 0xFFFFFFFF;
+            tx.pkt.status = LDR_STATUS_CALC_CRC32_RES;
+            *(uint32_t *)&tx.pkt.dat[0] = crc;
+            tx.pkt.size = 4;
+            break;
+        }
+
         default:
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;
             break;
@@ -232,8 +266,23 @@ void check_factory_metadata(void) {
     const uint32_t code poly = 0x04C11DB7;
 
     // check if meta valid
-    // iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(app_info_t));
-    meta = *(app_info_t code *)IAP_ADDR_FACTORY_META;
+    iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(app_info_t));
+    // meta = *(app_info_t code *)IAP_ADDR_FACTORY_META;
+    // debugf7("Checking factory metadata, size=0x%08lX, crc=0x%08lX, version=0x%08lX, %bu.%bu.%u",
+    //         meta.size,
+    //         (meta.crc),
+    //         meta.version,
+    //         version_major(meta.version),
+    //         version_minor(meta.version),
+    //         version_patch(meta.version));
+    debugf2("Checking factory metadata, size=0x%08lX", meta.size);
+    debugf2("crc=0x%08lX", meta.crc);
+    debugf2("timestamp=0x%08lX", meta.timestamp);
+    debugf2("version=0x%08lX", meta.version);
+    debugf4("Version: %bu.%bu.%u",
+            version_major(meta.version),
+            version_minor(meta.version),
+            version_patch(meta.version));
     if (meta.size == 0 || meta.size > APP_MAX_SIZE) {
         sysctx.st.onchip_meta_valid = 0;
         debugf2("No factory metadata, size=0x%08lX", meta.size);
@@ -265,19 +314,14 @@ void check_factory_metadata(void) {
 
     // meta valid
     sysctx.st.onchip_meta_valid = 1;
-    debugf6("Factory metadata valid, size=0x%08lX, crc=0x%08lX, version=%bu.%bu.%u",
-            meta.size,
-            (meta.crc),
-            version_major(meta.version),
-            version_minor(meta.version),
-            version_patch(meta.version));
+    debugf1("Factory metadata valid");
 }
 
 // 上电时若检测到有片上合法固件，则将片上固件复制到外部Flash的Factory App区域，
 // 并擦除片上固件元数据，防止下次上电时重复复制
 // 这是为了生产方便，第一次烧录完整64KB固件即可自动将出厂固件复制到外部Flash
 void copy_factory_app_to_norflash(void) {
-    uint32_t iap_addr, flash_addr, i;
+    uint32_t iap_addr, flash_addr, i, app_size;
     ota_info_t xdata ota_info, ota_verify;
 
     union {
@@ -294,8 +338,12 @@ void copy_factory_app_to_norflash(void) {
 
     // 1.1 erase factory app area
     debugf1("Erasing norflash factory app area...");
+    // no need to erase all 64KB, just erase the sectors that will be written
+    app_size = (meta.size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1);
+    debugf3("App size=0x%08lX, erase size=0x%08lX", meta.size, app_size);
     flash_addr = NORFLASH_FACTORY_APP_ADDR;
-    for (i = 0; i < NORFLASH_APP_SIZE; i += NORFLASH_SECTOR_SIZE) {
+    for (i = 0; i < app_size; i += NORFLASH_SECTOR_SIZE) {
+        debugf2("Erasing sector at 0x%08lX...", flash_addr);
         norflash_erase_sector(flash_addr);
         flash_addr += NORFLASH_SECTOR_SIZE;
     }
@@ -328,9 +376,10 @@ void copy_factory_app_to_norflash(void) {
         iap_read_bytes(iap_addr, buf.split.a, len);
         norflash_read(flash_addr, buf.split.b, len);
         if (memcmp(buf.split.a, buf.split.b, len) != 0) {
-            debugf1("Verify failed!");
-            sys_reset();
-            while (1);
+            debugf2("Verify failed! flash_addr=0x%08lX", flash_addr);
+            // sys_reset();
+            // while (1);
+            return;
         }
         i += len;
         iap_addr += len;
@@ -377,10 +426,22 @@ void copy_factory_app_to_norflash(void) {
 
     /////////////////////////// 3. erase on-chip factory metadata ///////////////////////////
     debugf1("Erasing on-chip factory metadata...");
-    if (!iap_erase_page_check(IAP_ADDR_FACTORY_META)) {
-        debugf1("Erase failed!");
-        sys_reset();
-        while (1);
+    for (i = 0xFF; i; i--) {
+        iap_erase_page(IAP_ADDR_FACTORY_META);
+        // meta = *(app_info_t code *)IAP_ADDR_FACTORY_META;
+        iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(meta));
+        if (meta.size == 0xFFFFFFFF &&
+            meta.crc == 0xFFFFFFFF &&
+            meta.version == 0xFFFFFFFF &&
+            meta.timestamp == 0xFFFFFFFF) {
+            break;
+        }
+        debugf2("Erase meta failed, size=0x%08lX", meta.size);
+        debugf2("crc=0x%08lX", meta.crc);
+        debugf2("version=0x%08lX", meta.version);
+        debugf2("timestamp=0x%08lX", meta.timestamp);
+        debugf2("Erase retry %ld...", i);
+        delay_ms(10);
     }
     debugf1("Erase done.");
     sysctx.st.onchip_meta_valid = 0;

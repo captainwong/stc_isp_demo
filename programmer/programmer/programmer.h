@@ -34,6 +34,9 @@ private slots:
     void slotProgram();
     void slotReboot();
     void slotReadRom();
+    void slotErasePage();
+    void slotRandomCrcData();
+    void slotCalcCrc32();
 
     void program();
     void read_rom();
@@ -83,6 +86,12 @@ private:
     QLabel* lblReadLen{};
     QLineEdit* leReadLen{};
     QPushButton* btnReadRom{};
+    QPushButton* btnErasePage{};
+    QLabel* lblCrcData{};
+    QLineEdit* leCrcData{};
+    QLineEdit* leCrc32{};
+    QPushButton* btnRandomCrcData{};
+    QPushButton* btnCalcCrc32{};
 
     ///////////////// app /////////////////
     struct {

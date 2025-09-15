@@ -93,6 +93,7 @@ int main(int argc, char* argv[]) {
     uint32_t ldr_size = 0, meta_size = 0, fill_value = 0, app_size = 0;
     uint32_t app_build_timestamp = 0;
     uint32_t app_version = 0;
+    uint32_t ldr_meta_size = 0;
 
     po::options_description desc(
         "Usage: crc -i input_file -l ldr_size -m meta_size -f fill_value -t app_build_timestamp -v app_version -M meta_bin_path\n"
@@ -134,6 +135,14 @@ int main(int argc, char* argv[]) {
         std::cerr << "Invalid bootloader size: " << sldr_size << std::endl;
         return 1;
     }
+
+    meta_size = std::strtoul(smeta_size.c_str(), nullptr, 16);
+    if (meta_size == 0) {
+        std::cerr << "Invalid meta info size: " << smeta_size << std::endl;
+        return 1;
+    }
+
+    ldr_meta_size = ldr_size + meta_size;
 
     fill_value = std::strtoul(sfill_value.c_str(), nullptr, 16);
     if (fill_value > 0xFF) {
@@ -200,11 +209,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        // check if all other snippets addr bigger than ldr_size + 3
-        if (!std::all_of(cpy.begin(), cpy.end(), [ldr_size](const hex80_code_snippet_t& snip) {
-                return snip.addr >= ldr_size + 3;
+        // check if all other snippets addr bigger than ldr_meta_size + 3
+        if (!std::all_of(cpy.begin(), cpy.end(), [ldr_meta_size](const hex80_code_snippet_t& snip) {
+                return snip.addr >= ldr_meta_size + 3;
             })) {
-            std::cerr << "Some code snippet address is less than bootloader size + 3." << std::endl;
+            std::cerr << "Some code snippet address is less than bootloader/meta size + 3." << std::endl;
             return 1;
         }
     }
@@ -212,9 +221,9 @@ int main(int argc, char* argv[]) {
     // merge all snippets's dat to bin_data
     bin_data.insert(bin_data.end(), snippets[0].dat.begin(), snippets[0].dat.end());
     for (const auto& snip : cpy) {
-        if (bin_data.size() + ldr_size < snip.addr) {
+        if (bin_data.size() + ldr_meta_size < snip.addr) {
             // need fill
-            size_t need_fill = snip.addr - (bin_data.size() + ldr_size);
+            size_t need_fill = snip.addr - (bin_data.size() + ldr_meta_size);
             bin_data.insert(bin_data.end(), need_fill, (uint8_t)fill_value);
         }
         bin_data.insert(bin_data.end(), snip.dat.begin(), snip.dat.end());
