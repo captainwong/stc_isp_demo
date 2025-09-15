@@ -31,37 +31,81 @@ void validate_format(const std::string& val) {
     }
 }
 
-void validate_hex(const std::string& val) {
+bool validate_hex_impl(const std::string& val) {
     if (val.size() > 2) {
         std::string hex_part = val.substr(2);
         jlib::trim(hex_part);
         if (!hex_part.empty() &&
-            (hex_part.size() % 2 == 0) &&
             std::all_of(hex_part.begin(), hex_part.end(), ::isxdigit)) {
-            return;
+            return true;
         }
     }
-    throw po::validation_error(
-        po::validation_error::invalid_option_value,
-        "ldr_size",
-        val);
+    return false;
+}
+
+void validate_ldr_size(const std::string& val) {
+    if (!validate_hex_impl(val)) {
+        throw po::validation_error(
+            po::validation_error::invalid_option_value,
+            "ldr_size",
+            val);
+    }
+}
+
+void validate_meta_size(const std::string& val) {
+    if (!validate_hex_impl(val)) {
+        throw po::validation_error(
+            po::validation_error::invalid_option_value,
+            "meta_size",
+            val);
+    }
+}
+
+void validate_fill(const std::string& val) {
+    if (!validate_hex_impl(val)) {
+        throw po::validation_error(
+            po::validation_error::invalid_option_value,
+            "fill_value",
+            val);
+    }
+}
+
+void validate_build_time(const std::string& val) {
+    if (!validate_hex_impl(val)) {
+        throw po::validation_error(
+            po::validation_error::invalid_option_value,
+            "app_build_timestamp",
+            val);
+    }
+}
+
+void validate_version(const std::string& val) {
+    if (!validate_hex_impl(val)) {
+        throw po::validation_error(
+            po::validation_error::invalid_option_value,
+            "app_version",
+            val);
+    }
 }
 
 int main(int argc, char* argv[]) {
-    std::string input_file, algo, sldr_size, sfill_value;
-    uint32_t ldr_size = 0, fill_value = 0, app_size = 0;
+    std::string input_file, sldr_size, smeta_size, sfill_value, sapp_build_timestamp, sapp_version, meta_path;
+    uint32_t ldr_size = 0, meta_size = 0, fill_value = 0, app_size = 0;
+    uint32_t app_build_timestamp = 0;
+    uint32_t app_version = 0;
 
     po::options_description desc(
-        "Usage: crc -i input_file -a crc32 -l ldr_size -f fill_value\n"
-        "Example: crc -i input.hex -a crc32 -l 0x1000 -f 0x00");
+        "Usage: crc -i input_file -l ldr_size -m meta_size -f fill_value -t app_build_timestamp -v app_version -M meta_bin_path\n"
+        "Example: crc -i input.hex -l 0x1000 0x200 -f 0x00 -t 0x68C7B8E7 -v 0x01000000 -M meta.bin\n");
     auto init = desc.add_options();
     init = init("help,h", "Show usage");
-    init = init("algorithm,a",
-                po::value<std::string>(&algo)->default_value("crc32")->notifier(&validate_format),
-                "CRC algorithm (allowed: hb_sum, crc8, crc16, crc32)");
     init = init("input,i", po::value<std::string>(&input_file), "Input file");
-    init = init("ldr_size,l", po::value<std::string>(&sldr_size)->notifier(&validate_hex), "Bootloader size");
-    init = init("fill_value,f", po::value<std::string>(&sfill_value)->notifier(&validate_hex), "Fill value");
+    init = init("ldr_size,l", po::value<std::string>(&sldr_size)->notifier(&validate_ldr_size), "Bootloader size");
+    init = init("meta_size,m", po::value<std::string>(&smeta_size)->notifier(&validate_meta_size), "Meta info size");
+    init = init("fill_value,f", po::value<std::string>(&sfill_value)->notifier(&validate_fill), "Fill value");
+    init = init("app_build_timestamp,t", po::value<std::string>(&sapp_build_timestamp)->notifier(&validate_build_time), "Application build timestamp");
+    init = init("app_version,v", po::value<std::string>(&sapp_version)->notifier(&validate_version), "Application version");
+    init = init("meta_path,M", po::value<std::string>(&meta_path), "Output Meta Info Binary path");
 
     try {
         po::variables_map vm;
@@ -94,6 +138,23 @@ int main(int argc, char* argv[]) {
     fill_value = std::strtoul(sfill_value.c_str(), nullptr, 16);
     if (fill_value > 0xFF) {
         std::cerr << "Invalid fill value: " << sfill_value << std::endl;
+        return 1;
+    }
+
+    app_build_timestamp = std::strtoul(sapp_build_timestamp.c_str(), nullptr, 16);
+    if (app_build_timestamp == 0) {
+        std::cerr << "Invalid application build timestamp: " << sapp_build_timestamp << std::endl;
+        return 1;
+    }
+
+    app_version = std::strtoul(sapp_version.c_str(), nullptr, 16);
+    if (app_version == 0) {
+        std::cerr << "Invalid application version: " << sapp_version << std::endl;
+        return 1;
+    }
+
+    if (meta_path.empty()) {
+        std::cerr << "Meta info binary path is required." << std::endl;
         return 1;
     }
 
@@ -159,20 +220,38 @@ int main(int argc, char* argv[]) {
         bin_data.insert(bin_data.end(), snip.dat.begin(), snip.dat.end());
     }
 
-    // calc crc
-    algo = boost::algorithm::to_lower_copy(algo);
-    if (algo == "hb_sum") {
-        uint8_t crc = hb_calc_sum(bin_data.data(), bin_data.size());
-        printf("%02X %08X\n", crc, bin_data.size());
-    } else if (algo == "crc8") {
-        uint8_t crc = hb_crc8(bin_data.data(), bin_data.size());
-        printf("%02X %08X\n", crc, bin_data.size());
-    } else if (algo == "crc16") {
-        uint16_t crc = hb_crc16(bin_data.data(), bin_data.size());
-        printf("%04X %08X\n", crc, bin_data.size());
-    } else if (algo == "crc32") {
-        uint32_t crc = hb_crc32(bin_data.data(), bin_data.size());
-        printf("%08X %08X\n", crc, bin_data.size());
+    // gen meta info and write file
+    {
+        typedef struct {
+            uint32_t size;       // size of the whole application binary
+            uint32_t crc;        // crc32 of the whole application binary
+            uint32_t timestamp;  // UTC timestamp
+            uint32_t version;    // major(8).minor(8).patch(16)
+        } app_info_t;
+
+        app_info_t meta;
+        meta.size = bin_data.size();
+        meta.crc = hb_crc32(bin_data.data(), bin_data.size());
+        meta.timestamp = app_build_timestamp;
+        meta.version = app_version;
+
+        // to big endian
+        meta.size = rev32(meta.size);
+        meta.crc = rev32(meta.crc);
+        meta.timestamp = rev32(meta.timestamp);
+        meta.version = rev32(meta.version);
+
+        // write to file
+        std::ofstream ofs(meta_path, std::ios::binary);
+        if (!ofs) {
+            std::cerr << "Failed to open meta info binary file: " << meta_path << std::endl;
+            return 1;
+        }
+
+        if (!ofs.write((const char*)&meta, sizeof(meta))) {
+            std::cerr << "Failed to write meta info binary file: " << meta_path << std::endl;
+            return 1;
+        }
     }
 
     return 0;

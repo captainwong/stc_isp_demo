@@ -7,6 +7,7 @@
 #include <libstc/disassembler/hex80.h>
 #include <libstc/disassembler/intel8051is.h>
 #include <libstc/stc8h.h>
+#include <libhbcheck/libhbcheck.h>
 
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -40,6 +41,8 @@ constexpr const int COMMON_BAUDS[] = {
 
 #define DEFAULT_COM "COM22"
 #define DEFAULT_BAUD 115200
+#define DEFAULT_LDR_SIZE (9216 + 512)  // 9.5KB
+#define DEFAULT_META_SIZE 512          // 0.5KB
 
 programmer::programmer(QWidget* parent)
     : QDialog(parent) {
@@ -88,18 +91,46 @@ programmer::programmer(QWidget* parent)
     lblRomSize = new QLabel(tr("ROM Size:"), this);
     leRomSize = new QLineEdit(this);
     leRomSize->setReadOnly(true);
+    leRomSize->setMaximumWidth(60);
     lblFiller = new QLabel(tr("Filler:"), this);
     cmbFiller = new QComboBox(this);
     cmbFiller->setEditable(true);
     cmbFiller->addItem(("00"), 0x00);
     cmbFiller->addItem(("FF"), 0xFF);
-    lblBootloaderSize = new QLabel(tr("Bootloader:"), this);
+    lblBootloaderSize = new QLabel(tr("Boot/Meta/Total:"), this);
     cmbBootloaderSize = new QComboBox(this);
     cmbBootloaderSize->setEditable(true);
-    for (int i = 1; i < 63; i++) {
-        cmbBootloaderSize->addItem(QString::number(i), i);
+    QString cur = "4";
+    for (int sz = 512; sz < 64 * 512; sz += 512) {
+        char buf[32];
+        if (sz % 1024 == 0) {
+            snprintf(buf, sizeof(buf), "%d", sz / 1024);
+        } else {
+            snprintf(buf, sizeof(buf), "%.1f", sz / 1024.0);
+        }
+        cmbBootloaderSize->addItem(buf, sz);
+        if (sz == DEFAULT_LDR_SIZE) {
+            cur = buf;
+        }
     }
-    cmbBootloaderSize->setCurrentText("4");
+    cmbBootloaderSize->setCurrentText(cur);
+    lblMetaSize = new QLabel(tr("/"), this);
+    cmbMetaSize = new QComboBox(this);
+    cmbMetaSize->setEditable(true);
+    cur = "0.5";
+    for (int sz = 0; sz <= 16 * 512; sz += 512) {
+        char buf[32];
+        if (sz % 1024 == 0) {
+            snprintf(buf, sizeof(buf), "%d", sz / 1024);
+        } else {
+            snprintf(buf, sizeof(buf), "%.1f", sz / 1024.0);
+        }
+        cmbMetaSize->addItem(buf, sz);
+        if (sz == DEFAULT_META_SIZE) {
+            cur = buf;
+        }
+    }
+    cmbMetaSize->setCurrentText(cur);
     lblTotalRomSize = new QLabel("/64KB", this);
 
     btnOpen = new QPushButton(tr("Open"), grpE2);
@@ -112,21 +143,28 @@ programmer::programmer(QWidget* parent)
     btnMerge->setToolTip(tr("Merge BOOTLOADER and USER_APP to one hex file for AiCube-ISP"));
     connect(btnMerge, &QPushButton::clicked, this, &programmer::slotMerge);
 
+    auto e2Line1 = new QHBoxLayout();
+    e2Line1->addWidget(lblRomSize);
+    e2Line1->addWidget(leRomSize);
+    e2Line1->addWidget(pb, 1);
+    e2Line1->addWidget(btnOpen);
+
     auto e2BtnLine = new QHBoxLayout();
-    e2BtnLine->addWidget(lblRomSize);
-    e2BtnLine->addWidget(leRomSize);
     e2BtnLine->addWidget(lblFiller);
     e2BtnLine->addWidget(cmbFiller);
+    e2BtnLine->addStretch();
     e2BtnLine->addWidget(lblBootloaderSize);
     e2BtnLine->addWidget(cmbBootloaderSize);
+    e2BtnLine->addWidget(lblMetaSize);
+    e2BtnLine->addWidget(cmbMetaSize);
     e2BtnLine->addWidget(lblTotalRomSize);
-    e2BtnLine->addWidget(btnOpen);
+    e2BtnLine->addStretch();
     e2BtnLine->addWidget(btnPatch);
     e2BtnLine->addWidget(btnMerge);
 
     auto e2layout = new QVBoxLayout();
     e2layout->addWidget(view, 1);
-    e2layout->addWidget(pb);
+    e2layout->addLayout(e2Line1);
     e2layout->addLayout(e2BtnLine);
     grpE2->setLayout(e2layout);
 
@@ -503,21 +541,23 @@ void programmer::slotOpen() {
 }
 
 void programmer::slotPatch() {
-    uint16_t ldr_size = (cmbBootloaderSize->currentText().toUInt() * 1024) & 0xFFFF;
-    if (ldr_size >= (size_t)e2.size()) {
-        QMessageBox::critical(this, tr("Error"), tr("Bootloader size exceeds or equals to ROM size"));
+    uint16_t ldr_size = (int)(cmbBootloaderSize->currentText().toFloat() * 1024) & 0xFFFF;
+    uint16_t meta_size = (int)(cmbMetaSize->currentText().toFloat() * 1024) & 0xFFFF;
+    uint16_t ldr_meta_size = ldr_size + meta_size;
+    if (ldr_meta_size >= (size_t)e2.size()) {
+        QMessageBox::critical(this, tr("Error"), tr("Bootloader/Meta size exceeds or equals to ROM size"));
         return;
     }
-    size_t valid_size = e2.size() - ldr_size;
+    size_t valid_size = e2.size() - ldr_meta_size;
 
-    // move first 3 op codes to ldr_size
-    e2[ldr_size + 0] = e2[0];
-    e2[ldr_size + 1] = e2[1];
-    e2[ldr_size + 2] = e2[2];
+    // move first 3 op codes to ldr_meta_size
+    e2[ldr_meta_size + 0] = e2[0];
+    e2[ldr_meta_size + 1] = e2[1];
+    e2[ldr_meta_size + 2] = e2[2];
 
     // move valid data to the beginning
     for (size_t i = 0; i < valid_size; i++) {
-        e2[i] = e2[i + ldr_size];
+        e2[i] = e2[i + ldr_meta_size];
     }
     e2.resize(valid_size);
     doc->setData(e2);
@@ -535,7 +575,13 @@ void programmer::slotPatch() {
 }
 
 void programmer::slotMerge() {
-    uint16_t ldr_size = (cmbBootloaderSize->currentText().toUInt() * 1024) & 0xFFFF;
+    uint16_t ldr_size = (int)(cmbBootloaderSize->currentText().toFloat() * 1024) & 0xFFFF;
+    uint16_t meta_size = (int)(cmbMetaSize->currentText().toFloat() * 1024) & 0xFFFF;
+    uint16_t ldr_meta_size = ldr_size + meta_size;
+    if (ldr_meta_size >= (size_t)e2.size()) {
+        QMessageBox::critical(this, tr("Error"), tr("Bootloader/Meta size exceeds or equals to ROM size"));
+        return;
+    }
 
     const QString supportedFormats = "Hex80 Files (*.hex);;All Files (*.*)";
     QString dir{};
@@ -567,7 +613,7 @@ void programmer::slotMerge() {
     }
     if (!tryParseHex80File(dat1.toStdString(), ldr_snippets) ||
         ldr_snippets.empty() ||
-        ldr_snippets.back().addr + ldr_snippets.back().dat.size() > ldr_size) {
+        ldr_snippets.back().addr + ldr_snippets.back().dat.size() > ldr_meta_size) {
         QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
         return;
     }
@@ -599,13 +645,13 @@ void programmer::slotMerge() {
         user_snippets.size() < 2 ||            // at least 2 snippets
         user_snippets[0].addr != 0x0000 ||     // make sure first snippet starts at 0x0000
         (user_snippets[0].dat.size() != 3) ||  // make sure first instruction is LJMP addr16
-        (user_snippets[0].dat[0] != 0x02) ||   // make sure first instruction is LJMP, and addr16 is bigger than ldr_size + 3
-        ((user_snippets[0].dat[1] << 8) | (user_snippets[0].dat[2])) < ldr_size + 3) {
+        (user_snippets[0].dat[0] != 0x02) ||   // make sure first instruction is LJMP, and addr16 is bigger than ldr_meta_size + 3
+        ((user_snippets[0].dat[1] << 8) | (user_snippets[0].dat[2])) < ldr_meta_size + 3) {
         QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
         return;
     }
 
-    user_snippets[0].addr += ldr_size;  // move the first user app instruction to user rom space
+    user_snippets[0].addr += ldr_meta_size;  // move the first user app instruction to user rom space
     std::copy(ldr_snippets.begin(), ldr_snippets.end(), std::back_inserter(allin1_snippets));
     std::copy(user_snippets.begin(), user_snippets.end(), std::back_inserter(allin1_snippets));
     std::string result;
@@ -631,6 +677,12 @@ void programmer::slotMerge() {
     e2.fill(cmbFiller->currentData().toUInt() & 0xFF);
     for (const auto& snippet : allin1_snippets) {
         std::copy(snippet.dat.begin(), snippet.dat.end(), e2.begin() + snippet.addr);
+    }
+
+    // generate meta data
+    {
+        uint16_t app_size = (e2size - ldr_meta_size) & 0xFFFF;
+        uint32_t crc = hb_crc32((uint8_t*)e2.constData() + ldr_meta_size, app_size);
     }
 
     doc->setData(e2);

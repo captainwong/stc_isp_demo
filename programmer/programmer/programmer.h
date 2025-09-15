@@ -55,6 +55,8 @@ private:
     QComboBox* cmbFiller{};
     QLabel* lblBootloaderSize{};
     QComboBox* cmbBootloaderSize{};
+    QLabel* lblMetaSize{};
+    QComboBox* cmbMetaSize{};
     QLabel* lblTotalRomSize{};
     QPushButton* btnOpen{};
     QPushButton* btnPatch{};

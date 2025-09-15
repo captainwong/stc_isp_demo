@@ -6,14 +6,27 @@ CURRENT_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd ${CURRENT_DIR}
 
 COMMON_H=${CURRENT_DIR}/../common/common.h
+BUILD_TIME_H=${CURRENT_DIR}/src/sys/build_time.h
+VERSION_H=${CURRENT_DIR}/src/sys/version.h
 
-
+CRC=${CURRENT_DIR}/../programmer/Release/crc.exe
+APP_HEX=${CURRENT_DIR}/output/APP.hex
+META_BIN=${CURRENT_DIR}/output/meta.bin
 LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+FACTORY_META_SIZE=$(grep -oP '#define FACTORY_META_SIZE \K[0x0-9A-F]+' ${COMMON_H})
 STC_RAM_SIZE=$(grep -oP '#define STC_RAM_SIZE \K[0x0-9A-F]+' ${COMMON_H})
 STC_ROM_SIZE=$(grep -oP '#define STC_ROM_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+# #define APP_BUILD_TIME 1757919463UL
+BUILD_TIME=$(grep -oP '#define APP_BUILD_TIME \K[0-9]+UL' ${BUILD_TIME_H} | sed 's/UL//')
+# convert to 0xXXXX format
+BUILD_TIME_HEX=$(printf "0x%04X" ${BUILD_TIME})
+APP_VERSION_MAJOR=$(grep -oP '#define APP_VERSION_MAJOR \K[0-9]+' ${VERSION_H})
+APP_VERSION_MINOR=$(grep -oP '#define APP_VERSION_MINOR \K[0-9]+' ${VERSION_H})
+APP_VERSION_PATCH=$(grep -oP '#define APP_VERSION_PATCH \K[0-9]+' ${VERSION_H})
+APP_VERSION_HEX=$(printf "0x%02X%02X%04X" ${APP_VERSION_MAJOR} ${APP_VERSION_MINOR} ${APP_VERSION_PATCH})
 
 LDR_SIZE_10=`printf "%d" ${LDR_SIZE}` # convert 0xXXXX to decimal
-FACTORY_META_SIZE=$(grep -oP '#define FACTORY_META_SIZE \K[0x0-9A-F]+' ${COMMON_H})
+FACTORY_META_SIZE_10=`printf "%d" ${FACTORY_META_SIZE}` # convert 0xXXXX to decimal
 RAM_SIZE_10=`printf "%d" ${STC_RAM_SIZE}` # convert 0xXXXX to decimal
 ROM_SIZE_10=`printf "%d" ${STC_ROM_SIZE}` # convert 0xXXXX to decimal
 IAP_ADDR_APP_START=$((LDR_SIZE + FACTORY_META_SIZE))
@@ -23,6 +36,9 @@ APP_MAX_SIZE_10=`printf "%d" ${APP_MAX_SIZE}`  # convert 0xXXXX to decimal
 echo "IAP_ADDR_APP_START=${IAP_ADDR_APP_START}, ${IAP_ADDR_APP_START_HEX}"
 echo "STC_RAM_SIZE=${STC_RAM_SIZE}, ${RAM_SIZE_10}"
 echo "STC_ROM_SIZE=${STC_ROM_SIZE}, ${ROM_SIZE_10}"
+echo "BUILD_TIME=${BUILD_TIME}, ${BUILD_TIME_HEX}"
+echo "APP_VERSION=${APP_VERSION_MAJOR}.${APP_VERSION_MINOR}.${APP_VERSION_PATCH}, ${APP_VERSION_HEX}"
+# exit
 
 # 1. gen CLASSES for makefile
 # parse LDR_SIZE from COMMON_H like `#define LDR_SIZE 0x1000  // bootloader flash space`
@@ -70,3 +86,9 @@ if [ $romsize -gt $APP_MAX_SIZE_10 ]; then
     echo "Error: app size $romsize exceeds APP_MAX_SIZE $APP_MAX_SIZE_10" >&2
     exit 1
 fi
+
+
+# 4. calculate app meta info and write to meta.bin
+cmd="${CRC} -i ${APP_HEX} -l ${LDR_SIZE} -m ${FACTORY_META_SIZE} -f 0x00 -t ${BUILD_TIME_HEX} -v ${APP_VERSION_HEX} -M ${META_BIN}"
+echo "Generating meta info binary with command: ${cmd}"
+${CRC} -i ${APP_HEX} -l ${LDR_SIZE} -m ${FACTORY_META_SIZE} -f 0x00 -t ${BUILD_TIME_HEX} -v ${APP_VERSION_HEX} -M ${META_BIN}
