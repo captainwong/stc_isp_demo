@@ -267,14 +267,7 @@ void check_factory_metadata(void) {
 
     // check if meta valid
     iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(app_info_t));
-    // meta = *(app_info_t code *)IAP_ADDR_FACTORY_META;
-    // debugf7("Checking factory metadata, size=0x%08lX, crc=0x%08lX, version=0x%08lX, %bu.%bu.%u",
-    //         meta.size,
-    //         (meta.crc),
-    //         meta.version,
-    //         version_major(meta.version),
-    //         version_minor(meta.version),
-    //         version_patch(meta.version));
+    // meta = *(app_info_t code *)IAP_ADDR_FACTORY_META; // 居然是iap函数占用更少的ROM空间
     debugf2("Checking factory metadata, size=0x%08lX", meta.size);
     debugf2("crc=0x%08lX", meta.crc);
     debugf2("timestamp=0x%08lX", meta.timestamp);
@@ -426,22 +419,10 @@ void copy_factory_app_to_norflash(void) {
 
     /////////////////////////// 3. erase on-chip factory metadata ///////////////////////////
     debugf1("Erasing on-chip factory metadata...");
-    for (i = 0xFF; i; i--) {
-        iap_erase_page(IAP_ADDR_FACTORY_META);
-        // meta = *(app_info_t code *)IAP_ADDR_FACTORY_META;
-        iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(meta));
-        if (meta.size == 0xFFFFFFFF &&
-            meta.crc == 0xFFFFFFFF &&
-            meta.version == 0xFFFFFFFF &&
-            meta.timestamp == 0xFFFFFFFF) {
-            break;
-        }
-        debugf2("Erase meta failed, size=0x%08lX", meta.size);
-        debugf2("crc=0x%08lX", meta.crc);
-        debugf2("version=0x%08lX", meta.version);
-        debugf2("timestamp=0x%08lX", meta.timestamp);
-        debugf2("Erase retry %ld...", i);
-        delay_ms(10);
+    if (!iap_erase_page_check(IAP_ADDR_FACTORY_META)) {
+        debugf1("Erase on-chip factory metadata failed!");
+        sys_reset();
+        while (1);
     }
     debugf1("Erase done.");
     sysctx.st.onchip_meta_valid = 0;
