@@ -68,3 +68,16 @@ if [ $romsize -gt $LDR_SIZE_10 ]; then
     echo "Error: Bootloader size $romsize exceeds LDR_SIZE $LDR_SIZE_10" >&2
     exit 1
 fi
+
+# 4. read BOOTLOADER.hex, check if the max address is not bigger than LDR_SIZE
+if [ ! -f ./output/BOOTLOADER.hex ]; then
+    echo "Error: ./output/BOOTLOADER.hex not found" >&2
+    exit 1
+fi
+max_addr=`./get_max_addr_from_hex.sh ./output/BOOTLOADER.hex`
+max_addr_dec=$((max_addr))
+if [ $max_addr_dec -gt $LDR_SIZE_10 ]; then
+    echo "Error: Bootloader max address $max_addr=$max_addr_dec exceeds LDR_SIZE $LDR_SIZE=$LDR_SIZE_10" >&2
+    echo "Try decrease ROM size or increase LDR_SIZE in common.h" >&2
+    exit 1
+fi

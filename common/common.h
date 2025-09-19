@@ -14,9 +14,9 @@
  *   - 512B page erase
  *   - 512B page program
  *   - partition: aiapp-isp: set user eeprom size to 64KB
- *      - 0x0000 - 0x35FF : 13.5KB for bootloader
- *      - 0x3600 - 0x37FF : 512B for factory metadata
- *      - 0x3800 - 0xFFFF : 50KB for application
+ *      - 0x0000 - 0x37FF : 14KB for bootloader
+ *      - 0x3800 - 0x39FF : 512B for factory metadata
+ *      - 0x3A00 - 0xFFFF : 49.5KB for application
  * norflash: W25Q32JVSIQ (32Mbit, 4MB)
  *   - 4KB sector erase
  *   - 256B page program
@@ -83,7 +83,7 @@ typedef union {
 
 //////////////////////////// on-chip flash partition ////////////////////////////
 
-#define LDR_SIZE 0x3600                                             // bootloader flash space = 13.5KB, at the beginning of on-chip flash
+#define LDR_SIZE 0x3800                                             // bootloader flash space = 13.5KB, at the beginning of on-chip flash
 #define FACTORY_META_SIZE 0x200                                     // factory metadata space = 512B, after bootloader
 #define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 50KB, after metadata
 #define IAP_ADDR_FACTORY_META LDR_SIZE                              // factory metadata address for IAP functions
@@ -103,6 +103,11 @@ typedef union {
 #if NORFLASH_APP_SIZE < APP_MAX_SIZE
 #error "NORFLASH_APP_SIZE must be >= APP_MAX_SIZE"
 #endif
+
+#define get_norflash_app_addr(appid)                             \
+    ((appid) == FLASH_APP_ID_FACTORY ? NORFLASH_FACTORY_APP_ADDR \
+     : (appid) == FLASH_APP_ID_APP1  ? NORFLASH_APP1_ADDR        \
+                                     : NORFLASH_APP2_ADDR)
 
 //////////////////////////// app info ////////////////////////////
 

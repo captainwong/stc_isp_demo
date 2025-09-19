@@ -77,7 +77,7 @@ void main() {
     }
 
     if (!sysctx.st.dfu) {  // check if the force DFU mode flag was set by application
-        // check_ota();
+        check_ota();
         if (sysctx.st.onchip_app_valid) {
             debugf1("Jump to application");
             uart_release();
@@ -390,88 +390,175 @@ void copy_onchip_factory_app_to_norflash(void) {
     sysctx.st.onchip_meta_valid = 0;
 }
 
-// bool try_load_flash_app(uint8_t appid) {
-//     uint32_t iap_addr, flash_addr, i, app_size, crc;
-//     flash_app_info_t *papp = NULL;
+bool try_load_flash_app(uint8_t appid) {
+    uint32_t iap_addr, flash_addr, i, crc;
+    flash_app_info_t *papp = NULL;
+    bool need_copy_flash_to_chip = false;
+    uint8_t fail_times = 0;
 
-//     // read app info
-//     if (appid == FLASH_APP_ID_FACTORY) {
-//         flash_addr = NORFLASH_FACTORY_APP_ADDR;
-//         papp = &ota_info.factory;
-//     } else if (appid == FLASH_APP_ID_APP1) {
-//         flash_addr = NORFLASH_APP1_ADDR;
-//         papp = &ota_info.app1;
-//     } else {  // appid == FLASH_APP_ID_APP2
-//         flash_addr = NORFLASH_APP2_ADDR;
-//         papp = &ota_info.app2;
-//     }
-//     debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", appid, papp->info.size, papp->info.crc);
-//     debugf4("Version: %bu.%bu.%u",
-//             version_major(papp->info.version),
-//             version_minor(papp->info.version),
-//             version_patch(papp->info.version));
-//     if (papp->info.size == 0 || papp->info.size > APP_MAX_SIZE) {
-//         debugf2("App size invalid, size=0x%08lX", papp->info.size);
-//         return false;
-//     }
+    union {
+        uint8_t total[NORFLASH_PAGE_SIZE];
+        struct {
+            uint8_t a[NORFLASH_PAGE_SIZE / 2];
+            uint8_t b[NORFLASH_PAGE_SIZE / 2];
+        } split;
+    } xdata buf;
 
-//     // validate crc
+    // read app info from norflash
+    if (appid == FLASH_APP_ID_FACTORY) {
+        flash_addr = NORFLASH_FACTORY_APP_ADDR;
+        papp = &ota_info.factory;
+    } else if (appid == FLASH_APP_ID_APP1) {
+        flash_addr = NORFLASH_APP1_ADDR;
+        papp = &ota_info.app1;
+    } else {  // appid == FLASH_APP_ID_APP2
+        flash_addr = NORFLASH_APP2_ADDR;
+        papp = &ota_info.app2;
+    }
+    debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", appid, papp->info.size, papp->info.crc);
+    debugf4("Version: %bu.%bu.%u",
+            version_major(papp->info.version),
+            version_minor(papp->info.version),
+            version_patch(papp->info.version));
+    if (papp->info.size == 0 || papp->info.size > APP_MAX_SIZE) {
+        debugf2("App size invalid, size=0x%08lX", papp->info.size);
+        return false;
+    }
 
+    // validate crc
+    crc = hb_crc32_slow_init();
+    for (i = 0; i < papp->info.size;) {
+        uint16_t len = (papp->info.size - i) > sizeof(buf.total) ? sizeof(buf.total) : (papp->info.size - i);
+        norflash_read(flash_addr, buf.total, len);
+        crc = hb_crc32_slow_update(crc, buf.total, len);
+        i += len;
+        flash_addr += len;
+    }
+    crc = hb_crc32_slow_finalize(crc);
+    if (crc != papp->info.crc) {
+        debugf3("App crc error, calc=0x%08lX, info=0x%08lX", crc, papp->info.crc);
+        return false;
+    }
 
-//     return true;
-// }
+    // now flash app is valid, test if it is the same as on-chip app
+    if (sysctx.st.onchip_app_valid) {
+        iap_addr = IAP_ADDR_APP_START;
+        flash_addr = get_norflash_app_addr(appid);
+        crc = hb_crc32_slow_init();  // calc on-chip app crc
+        for (i = 0; i < papp->info.size;) {
+            uint16_t len = (papp->info.size - i);
+            if (len > sizeof(buf.split.a)) {
+                len = sizeof(buf.split.a);
+            }
+            norflash_read(flash_addr, buf.split.a, len);
+            iap_read_bytes(iap_addr, buf.split.b, len);
+            if (memcmp(buf.split.a, buf.split.b, len) != 0) {
+                debugf1("Not the same as on-chip app");
+                need_copy_flash_to_chip = true;
+                break;
+            }
+            crc = hb_crc32_slow_update(crc, buf.split.b, len);
+            i += len;
+            flash_addr += len;
+            iap_addr += len;
+        }
 
-// /** boot order:
-//  * 1. current_app
-//  * 2. the other app
-//  * 3. factory app
-//  * 4. on-chip app
-//  */
-// void check_ota(void) {
-//     uint8_t boot[3], n = 0, i;
-//     bool retry_failed = false;
+        crc = hb_crc32_slow_finalize(crc);
+        if (!need_copy_flash_to_chip && crc != papp->info.crc) {
+            debugf3("On-chip app crc error, calc=0x%08lX, info=0x%08lX", crc, papp->info.crc);
+            need_copy_flash_to_chip = true;
+        }
+    }
+    if (!need_copy_flash_to_chip) {
+        debugf1("Same as on-chip app, no need to copy");
+        return true;
+    }
 
-//     debugf1("Checking ota info...");
-//     // find out which ota info is older(smaller seq)
-//     findout_which_ota_info_is_older();
+    // copy flash app to on-chip app area
+    debugf1("Will copy flash app to on-chip app area");
+    debugf1("Erasing on-chip app area...");
+    for (iap_addr = IAP_ADDR_APP_START; iap_addr < IAP_ADDR_APP_END;) {
+        if (!iap_erase_page_check(iap_addr) && ++fail_times < 30) {
+            debugf1("Erase on-chip app area failed!");
+            delay_ms(100);
+            continue;
+        }
+        iap_addr += IAP_PAGE_SIZE;
+    }
+    debugf1("Erased.");
 
-// retry:
-//     // read out the newer ota info
-//     if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
-//         debugf1("Loading ota info from backup");
-//         norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
-//     } else {
-//         debugf1("Loading ota info from master");
-//         norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
-//     }
-//     debugf3("ota_info.seq=0x%08lX, current_app=%bu", ota_info.seq, ota_info.current_app);
-//     if (ota_info.current_app > FLASH_APP_ID_MAX) {
-//         debugf1("No valid current_app");
-//         if (!retry_failed) {
-//             sysctx.st.otaid = (sysctx.st.otaid == FLASH_OTA_ID_MASTER) ? FLASH_OTA_ID_BACKUP : FLASH_OTA_ID_MASTER;
-//             retry_failed = true;
-//             goto retry;
-//         } else {
-//             debugf1("No valid app on flash");
-//             return;
-//         }
-//     } else if(ota_info.current_app == FLASH_APP_ID_FACTORY) {
-//         boot[n++] = FLASH_APP_ID_FACTORY;
-//     } else {
-//         boot[n++] = ota_info.current_app;
-//         boot[n++] = (ota_info.current_app == FLASH_APP_ID_APP1) ? FLASH_APP_ID_APP2 : FLASH_APP_ID_APP1;
-//         boot[n++] = FLASH_APP_ID_FACTORY;
-//     }
+    debugf1("Programming...");
+    iap_addr = IAP_ADDR_APP_START;
+    flash_addr = get_norflash_app_addr(appid);
+    fail_times = 0;
+    for (i = 0; i < papp->info.size;) {
+        uint16_t len = (papp->info.size - i) > sizeof(buf.total) ? sizeof(buf.total) : (papp->info.size - i);
+        norflash_read(flash_addr, buf.total, len);
+        if (!iap_write_bytes_check(iap_addr, buf.total, len) && ++fail_times < 30) {
+            debugf1("Program on-chip app area failed!");
+            delay_ms(100);
+            continue;
+        }
+        i += len;
+        iap_addr += len;
+        flash_addr += len;
+    }
+    debugf1("Programmed.");
 
-//     for (i = 0; i < n; i++) {
-//         debugf2("Trying to load app%bu...", boot[i]);
-//         if (try_load_flash_app(boot[i])) {
-//             sysctx.st.appid = boot[i];
-//             sysctx.st.onchip_app_valid = true;
-//             debugf2("App%bu loaded", boot[i]);
-//             return;
-//         } else {
-//             debugf2("Load app%bu failed", boot[i]);
-//         }
-//     }
-// }
+    return true;
+}
+
+/** boot order:
+ * 1. current_app
+ * 2. the other app
+ * 3. factory app
+ * 4. on-chip app
+ */
+void check_ota(void) {
+    uint8_t boot[3], n = 0, i;
+    bool retry_failed = false;
+
+    debugf1("Checking ota info...");
+    // find out which ota info is older(smaller seq)
+    findout_which_ota_info_is_older();
+
+retry:
+    // read out the newer ota info
+    if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
+        debugf1("Loading ota info from backup");
+        norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    } else {
+        debugf1("Loading ota info from master");
+        norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    }
+    debugf3("ota_info.seq=0x%08lX, current_app=%bu", ota_info.seq, ota_info.current_app);
+    if (ota_info.current_app > FLASH_APP_ID_MAX) {
+        debugf1("No valid current_app");
+        if (!retry_failed) {
+            sysctx.st.otaid = (sysctx.st.otaid == FLASH_OTA_ID_MASTER) ? FLASH_OTA_ID_BACKUP : FLASH_OTA_ID_MASTER;
+            retry_failed = true;
+            goto retry;
+        } else {
+            debugf1("No valid app on flash");
+            return;
+        }
+    } else if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
+        boot[n++] = FLASH_APP_ID_FACTORY;
+    } else {
+        boot[n++] = ota_info.current_app;
+        boot[n++] = (ota_info.current_app == FLASH_APP_ID_APP1) ? FLASH_APP_ID_APP2 : FLASH_APP_ID_APP1;
+        boot[n++] = FLASH_APP_ID_FACTORY;
+    }
+
+    for (i = 0; i < n; i++) {
+        debugf2("Trying to load app%bu...", boot[i]);
+        if (try_load_flash_app(boot[i])) {
+            sysctx.st.appid = boot[i];
+            sysctx.st.onchip_app_valid = true;
+            debugf2("App%bu loaded", boot[i]);
+            return;
+        } else {
+            debugf2("Load app%bu failed", boot[i]);
+        }
+    }
+}

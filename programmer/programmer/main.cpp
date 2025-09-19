@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
             const char *name;
             uint32_t b;
         } partitions[] = {
-            {"ldr ", 13 * 1024 + 512},  // 13.5KB
+            {"ldr ", 14 * 1024},  // 14KB
             {"meta", 512},
             {"app ", 0},
         };

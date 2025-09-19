@@ -41,7 +41,7 @@ constexpr const int COMMON_BAUDS[] = {
 
 #define DEFAULT_COM "COM33"
 #define DEFAULT_BAUD 115200
-#define DEFAULT_LDR_SIZE (13 * 1024 + 512)  // 13.5KB
+#define DEFAULT_LDR_SIZE (14 * 1024)  // 14KB
 #define DEFAULT_META_SIZE 512     // 0.5KB
 
 programmer::programmer(QWidget* parent)
