@@ -107,6 +107,7 @@
         "xutility": "cpp",
         "memory_resource": "cpp",
         "string_view": "cpp",
-        "cfenv": "cpp"
+        "cfenv": "cpp",
+        "*.inc": "cpp"
     }
 }

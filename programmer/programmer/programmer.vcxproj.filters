@@ -194,5 +194,8 @@
     <ClInclude Include="..\..\common\protocol.h">
       <Filter>protocol</Filter>
     </ClInclude>
+    <ClInclude Include="stcutil.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

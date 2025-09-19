@@ -157,6 +157,7 @@
     <QtMoc Include="QHexView\model\qhexmetadata.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="stcutil.h" />
     <QtMoc Include="Serial.h" />
     <QtMoc Include="QHexView\dialogs\hexfinddialog.h" />
     <ClInclude Include="..\..\common\protocol.h" />

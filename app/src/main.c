@@ -123,12 +123,13 @@ void isp_handle(void) {
         case OTA2APP_CMD_LATEST_APP_INFO:
             if (rx.pkt.size == sizeof(latest_app_info_t)) {
                 latest_app_info_t *info = (latest_app_info_t *)rx.pkt.dat;
-                app_info_to_big_endian(*info);
-                debugf3("Latest App info: size=0x%08lX, crc=0x%08lX", info->size, info->crc);
+                app_info_to_big_endian(info->info);
+                debugf4("Latest App info: status=%bu, size=0x%08lX, crc=0x%08lX", info->status, info->info.size, info->info.crc);
                 debugf4("Version: %bu.%bu.%u",
-                        version_major(info->version),
-                        version_minor(info->version),
-                        version_patch(info->version));
+                        version_major(info->info.version),
+                        version_minor(info->info.version),
+                        version_patch(info->info.version));
+                return;  // no need to reply
             }
             break;
         default:

@@ -57,6 +57,8 @@ public:
     void read_flash(uint32_t addr, uint8_t size);
     void program_flash(uint32_t addr, const QByteArray& bin);
 
+    void reply_latest_ota_app_info(const latest_app_info_t& info);
+
     void send_tx(isp_packet_t* tx);
 
 signals:

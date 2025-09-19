@@ -5,6 +5,10 @@ set -e
 CURRENT_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd ${CURRENT_DIR}
 
+utc_timestamp=$(date +%s)
+utc_timestamp="${utc_timestamp}UL"
+echo "#define APP_BUILD_TIME ${utc_timestamp}" > ${CURRENT_DIR}/src/sys/build_time.h
+
 COMMON_H=${CURRENT_DIR}/../common/common.h
 BUILD_TIME_H=${CURRENT_DIR}/src/sys/build_time.h
 VERSION_H=${CURRENT_DIR}/src/sys/version.h
@@ -49,9 +53,6 @@ echo "CLASSES=${CLASSES}"
 
 # 2. build app
 rm -rf ./output || true
-utc_timestamp=$(date +%s)
-utc_timestamp="${utc_timestamp}UL"
-echo "#define APP_BUILD_TIME ${utc_timestamp}" > ${CURRENT_DIR}/src/sys/build_time.h
 time make DEBUG=1 INTVECTOR=${IAP_ADDR_APP_START} CLASSES="${CLASSES}" -j
 
 

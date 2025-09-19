@@ -3,6 +3,8 @@
 #include <QSerialPort>
 #include <QtWidgets>
 
+#include "../../common/protocol.h"
+
 #define E2_MAX_SIZE 0x10000
 #define E2_EMPTY_SIZE 0x100
 
@@ -38,8 +40,17 @@ private slots:
     void slotRandomCrcData();
     void slotCalcCrc32();
 
+    void slotLoadOtaConfig();
+    void slotSaveOtaConfig();
+    void slotAddOtaApp();
+    void slotRemoveOtaApp();
+    void slotSetOtaAppAsLatest();
+
     void program();
     void read_rom();
+    bool loadOtaConfig(const QString& path);
+    bool saveOtaConfig(const QString& path);
+    void updateOtaAppList();
 
 private:
     QComboBox* cmbPort{};
@@ -103,10 +114,14 @@ private:
     ///////////////// ota-server /////////////////
     struct {
         QGroupBox* grp{};
+        QListWidget* lstApps{};
         QLabel* lblConfPath{};
         QLineEdit* leConfPath{};
         QPushButton* btnLoadConf{};
-
+        QPushButton* btnSaveConf{};
+        QPushButton* btnAddApp{};
+        QPushButton* btnRemoveApp{};
+        QPushButton* btnSetAppAsLatest{};
     } ota{};
 
     QByteArray e2{};
@@ -114,4 +129,12 @@ private:
     QHexDocument* doc{};
     Serial* serial{};
     QMetaObject::Connection connSerialError{};
+
+    typedef struct {
+        app_info_t info;
+        QString path;
+    } ota_app_t;
+    QMap<uint32_t, ota_app_t> ota_apps{}; // version -> app
+    uint32_t ota_latest_version = 0;
+    QString ota_conf_path{};
 };

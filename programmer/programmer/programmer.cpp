@@ -19,30 +19,14 @@
 #include "stcutil.h"
 
 constexpr const int COMMON_BAUDS[] = {
-    1200,
-    2400,
-    4800,
-    9600,
-    19200,
-    38400,
-    57600,
-    115200,
-    100000,
-    200000,
-    230400,
-    250000,
-    500000,
-    1000000,
-    1500000,
-    2000000,
-    2500000,
-    3000000,
-};
+    1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200,
+    100000, 200000, 230400, 250000, 500000, 1000000,
+    1500000, 2000000, 2500000, 3000000};
 
 #define DEFAULT_COM "COM33"
 #define DEFAULT_BAUD 115200
 #define DEFAULT_LDR_SIZE (14 * 1024)  // 14KB
-#define DEFAULT_META_SIZE 512     // 0.5KB
+#define DEFAULT_META_SIZE 512         // 0.5KB
 
 programmer::programmer(QWidget* parent)
     : QDialog(parent) {
@@ -50,7 +34,7 @@ programmer::programmer(QWidget* parent)
     setWindowFlags(windowFlags() | Qt::WindowMinimizeButtonHint);
     setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
     setStyleSheet(jlib::qt::dark_mode_stylesheet);
-    setMinimumSize(1500, 800);
+    setMinimumSize(1900, 800);
 
     serial = new Serial(this);
 
@@ -77,7 +61,7 @@ programmer::programmer(QWidget* parent)
 
     ////////////////////////////////// rom //////////////////////////////////
     grpE2 = new QGroupBox(tr("ROM"), this);
-    grpE2->setFixedWidth(750);
+    grpE2->setFixedWidth(720);
     view = new QHexView(grpE2);
     e2.reserve(E2_EMPTY_SIZE);
     e2.fill((char)0xFF, E2_EMPTY_SIZE);
@@ -279,7 +263,42 @@ programmer::programmer(QWidget* parent)
         appLayout->addLayout(line);
         app.grp->setLayout(appLayout);
     }
+    ////////////////////////////////// ota //////////////////////////////////
+    ota.grp = new QGroupBox(tr("OTA Server"), this);
+    ota.lstApps = new QListWidget(this);
+    ota.lblConfPath = new QLabel(tr("Conf:"), this);
+    ota.leConfPath = new QLineEdit(this);
+    ota.btnLoadConf = new QPushButton(tr("Load"), this);
+    connect(ota.btnLoadConf, &QPushButton::clicked, this, &programmer::slotLoadOtaConfig);
+    ota.btnSaveConf = new QPushButton(tr("Save"), this);
+    connect(ota.btnSaveConf, &QPushButton::clicked, this, &programmer::slotSaveOtaConfig);
+    ota.btnAddApp = new QPushButton(tr("Add APP"), this);
+    connect(ota.btnAddApp, &QPushButton::clicked, this, &programmer::slotAddOtaApp);
+    ota.btnRemoveApp = new QPushButton(tr("Remove APP"), this);
+    connect(ota.btnRemoveApp, &QPushButton::clicked, this, &programmer::slotRemoveOtaApp);
+    ota.btnSetAppAsLatest = new QPushButton(tr("Set APP as Latest"), this);
+    connect(ota.btnSetAppAsLatest, &QPushButton::clicked, this, &programmer::slotSetOtaAppAsLatest);
+    {
+        auto line1 = new QHBoxLayout();
+        line1->addWidget(ota.lblConfPath);
+        line1->addWidget(ota.leConfPath, 1);
+        line1->addWidget(ota.btnLoadConf);
+        line1->addWidget(ota.btnSaveConf);
 
+        auto line2 = new QHBoxLayout();
+        line2->addWidget(ota.btnAddApp);
+        line2->addWidget(ota.btnRemoveApp);
+        line2->addWidget(ota.btnSetAppAsLatest);
+        line2->addStretch();
+
+        auto otaLayout = new QVBoxLayout();
+        otaLayout->addLayout(line1);
+        otaLayout->addWidget(ota.lstApps, 1);
+        otaLayout->addLayout(line2);
+        ota.grp->setLayout(otaLayout);
+    }
+
+    ////////////////////////////////// layout //////////////////////////////////
     auto bodyRLayout = new QVBoxLayout();
     bodyRLayout->addWidget(grpDisasm, 1);
     bodyRLayout->addWidget(grpLdr);
@@ -288,6 +307,7 @@ programmer::programmer(QWidget* parent)
     auto bodyLayout = new QHBoxLayout();
     bodyLayout->addWidget(grpE2);
     bodyLayout->addLayout(bodyRLayout);
+    bodyLayout->addWidget(ota.grp);
 
     auto mainLayout = new QVBoxLayout();
     mainLayout->addLayout(topLayout);
@@ -300,6 +320,20 @@ programmer::programmer(QWidget* parent)
                               static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
                               this,
                               &programmer::slot_serial_error);
+
+    {
+        QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+        ota_conf_path = d.filePath("ota_config.ini");
+        if (!QFile::exists(ota_conf_path)) {
+            // create a default one
+            saveOtaConfig(ota_conf_path);
+        }
+    }
+    if (loadOtaConfig(ota_conf_path)) {
+        ota.leConfPath->setText(ota_conf_path);
+    }
+
+    showMaximized();
 }
 
 programmer::~programmer() {}
@@ -480,6 +514,19 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
                 bool equ = leCrc32->text().compare(sbuf, Qt::CaseInsensitive) == 0;
                 MYQDEBUG3_NOQUOTE << "MY:" << leCrc32->text() << "\nMCU CRC32: " << sbuf << " " << (equ ? "(Equal)" : "(Not Equal)");
             }
+            break;
+        }
+
+        case APP2OTA_CMD_GET_LATEST_APP_INFO: {
+            latest_app_info_t info;
+            if (ota_latest_version && ota_apps.contains(ota_latest_version)) {
+                info.info = ota_apps[ota_latest_version].info;
+                // app_info_to_big_endian(info.info);
+                info.status = OTA_OK;
+            } else {
+                info.status = OTA_SERVER_ERROR;
+            }
+            serial->reply_latest_ota_app_info(info);
             break;
         }
 
@@ -745,13 +792,6 @@ void programmer::slotMerge() {
 
     // verify and copy meta data
     {
-        typedef struct {
-            uint32_t size;       // size of the whole application binary
-            uint32_t crc;        // crc32 of the whole application binary
-            uint32_t timestamp;  // UTC timestamp
-            uint32_t version;    // major(8).minor(8).patch(16)
-        } app_info_t;
-
         app_info_t meta = *(app_info_t*)(mdat.constData());
 
         // to little endian
@@ -885,6 +925,189 @@ void programmer::slotCalcCrc32() {
     serial->calc_crc32(dat);
 }
 
+void programmer::slotLoadOtaConfig() {
+    QString path = QFileDialog::getOpenFileName(this, tr("Open OTA Config File"), ota_conf_path, "INI Files (*.ini);;All Files (*.*)");
+    if (path.isEmpty()) {
+        return;
+    }
+    if (loadOtaConfig(path)) {
+        ota.leConfPath->setText(path);
+    } else {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to load OTA config file"));
+    }
+}
+
+void programmer::slotSaveOtaConfig() {
+    saveOtaConfig(ota.leConfPath->text());
+}
+
+void programmer::slotAddOtaApp() {
+    const QString hexFormats = "Hex80 Files (*.hex);;All Files (*.*)";
+    const QString binFormats = "Binary Files (*.bin);;All Files (*.*)";
+    QString dir{};
+#ifdef _DEBUG
+    {
+        QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+        d.cdUp();
+        d.cdUp();
+        dir = d.absolutePath() + "/app/output";
+    }
+#endif
+
+    QString userapp, appmeta;
+#ifdef _DEBUG
+    userapp = dir + "/APP.hex";
+#else
+    userapp = QFileDialog::getOpenFileName(this, tr("Open User Application Hex File"), dir, hexFormats);
+#endif
+
+    if (userapp.isEmpty()) {
+        return;
+    }
+
+    QFile file2(userapp);
+    if (!file2.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open user application hex file"));
+        return;
+    }
+    QByteArray dat2 = file2.readAll();
+    if (dat2.length() > E2_MAX_SIZE) {
+        QMessageBox::critical(this, tr("Error"), tr("ROM space exceeded 64KB"));
+        return;
+    }
+    std::vector<hex80_code_snippet_t> user_snippets;
+    if (!tryParseHex80File(dat2.toStdString(), user_snippets) ||
+        user_snippets.size() < 2 ||            // at least 2 snippets
+        user_snippets[0].addr != 0x0000 ||     // make sure first snippet starts at 0x0000
+        (user_snippets[0].dat.size() != 3) ||  // make sure first instruction is LJMP addr16
+        (user_snippets[0].dat[0] != 0x02) ||   // make sure first instruction is LJMP, and addr16 is bigger than ldr_meta_size + 3
+        ((user_snippets[0].dat[1] << 8) | (user_snippets[0].dat[2])) < 3) {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
+        return;
+    }
+
+    // open app meta
+#ifdef _DEBUG
+    {
+        QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+        d.cdUp();
+        d.cdUp();
+        dir = d.absolutePath() + "/app/output";
+    }
+#endif
+
+#ifdef _DEBUG
+    appmeta = dir + "/meta.bin";
+#else
+    appmeta = QFileDialog::getOpenFileName(this, tr("Open Application Meta Data Bin File"), dir, binFormats);
+#endif
+    if (appmeta.isEmpty()) {
+        return;
+    }
+    QFile mfile(appmeta);
+    if (!mfile.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open meta data bin file"));
+        return;
+    }
+    QByteArray mdat = mfile.readAll();
+    if (mdat.length() != sizeof(app_info_t)) {
+        QMessageBox::critical(this, tr("Error"), tr("Meta data bin file size is not %1 bytes").arg(sizeof(app_info_t)));
+        return;
+    }
+
+    app_info_t* meta = (app_info_t*)(mdat.constData());
+    app_info_to_little_endian(*meta);
+    ota_app_t app;
+    app.path = userapp;
+    app.info = *meta;
+
+    // check if version already exists
+    if (ota_apps.contains(meta->version)) {
+        auto res = QMessageBox::question(this, tr("Confirm"), tr("An application with the same version already exists. Do you want to replace it?"),
+                                         QMessageBox::Yes | QMessageBox::No);
+        if (res != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    // copy to my own dir
+    {
+        QString folder;
+        QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
+        folder = d.absolutePath() + "/ota_apps";
+        if (!QDir(folder).exists()) {
+            QDir().mkdir(folder);
+        }
+
+        QString newpath = QString("%1/%2.hex").arg(folder).arg(version2String(app.info.version));
+        // copy user app
+        if (!QFile::copy(userapp, newpath)) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to copy user application hex file to %1").arg(newpath));
+            return;
+        }
+        app.path = newpath;
+    }
+
+    ota_apps[meta->version] = app;
+    QString item_txt = QString("%1 | Time:%2 | Size:%3 | CRC:%4")
+                           .arg(version2String(app.info.version))
+                           .arg(QDateTime::fromSecsSinceEpoch(app.info.timestamp).toString("yyyy-MM-dd HH:mm:ss"))
+                           .arg(QString::number(app.info.size, 10))
+                           .arg(QString::number(app.info.crc, 16).toUpper());
+    auto item = new QListWidgetItem();
+    item->setData(Qt::UserRole, app.info.version);
+    item->setText(item_txt);
+    ota.lstApps->addItem(item);
+
+    if (ota_latest_version == 0 || app.info.version > ota_latest_version) {
+        ota_latest_version = app.info.version;
+    }
+
+    updateOtaAppList();
+    saveOtaConfig(ota_conf_path);
+}
+
+void programmer::slotRemoveOtaApp() {
+    auto item = ota.lstApps->currentItem();
+    if (!item) {
+        return;
+    }
+    uint32_t version = item->data(Qt::UserRole).toUInt();
+    ota_apps.remove(version);
+    delete item;
+
+    // delete the hex file
+    {
+        QString path = ota_apps.contains(version) ? ota_apps[version].path : QString();
+        if (!path.isEmpty() && QFile::exists(path)) {
+            QFile::remove(path);
+        }
+    }
+
+    if (version == ota_latest_version) {
+        ota_latest_version = 0;
+        for (const auto& app : ota_apps) {
+            if (app.info.version > ota_latest_version) {
+                ota_latest_version = app.info.version;
+            }
+        }
+        updateOtaAppList();
+    }
+
+    saveOtaConfig(ota_conf_path);
+}
+
+void programmer::slotSetOtaAppAsLatest() {
+    auto item = ota.lstApps->currentItem();
+    if (!item) {
+        return;
+    }
+    uint32_t version = item->data(Qt::UserRole).toUInt();
+    ota_latest_version = version;
+    updateOtaAppList();
+    saveOtaConfig(ota_conf_path);
+}
+
 void programmer::program() {
     auto bin = e2.mid(e2sent, 128);
     MYQDEBUG3 << "Programming" << QString::number(e2sent, 16) << "size=" << bin.size();
@@ -901,6 +1124,82 @@ void programmer::read_rom() {
         size = 128;
     }
     serial->read_rom((uint16_t)(addr + e2recv), size & 0xFF);
+}
+
+bool programmer::loadOtaConfig(const QString& path) {
+    if (path.isEmpty()) {
+        return false;
+    }
+    if (!QFile::exists(path)) {
+        return false;
+    }
+
+    QSettings settings(path, QSettings::IniFormat);
+    int size = settings.beginReadArray("apps");
+    ota_apps.clear();
+    ota.lstApps->clear();
+    for (int i = 0; i < size; i++) {
+        settings.setArrayIndex(i);
+        ota_app_t app;
+        app.path = settings.value("path").toString();
+        app.info.version = settings.value("version").toUInt();
+        app.info.timestamp = settings.value("timestamp").toUInt();
+        app.info.size = settings.value("size").toUInt();
+        app.info.crc = settings.value("crc").toUInt();
+        ota_apps[app.info.version] = app;
+        QString item_txt = QString("%1 | Time:%2 | Size:%3 | CRC:%4")
+                               .arg(version2String(app.info.version))
+                               .arg(QDateTime::fromSecsSinceEpoch(app.info.timestamp).toString("yyyy-MM-dd HH:mm:ss"))
+                               .arg(QString::number(app.info.size, 10))
+                               .arg(QString::number(app.info.crc, 16).toUpper());
+        auto item = new QListWidgetItem();
+        item->setData(Qt::UserRole, app.info.version);
+        item->setText(item_txt);
+        ota.lstApps->addItem(item);
+    }
+    settings.endArray();
+    ota_latest_version = settings.value("latest_version").toUInt();
+
+    updateOtaAppList();
+
+    return true;
+}
+
+bool programmer::saveOtaConfig(const QString& path) {
+    if (path.isEmpty()) {
+        return false;
+    }
+    ota_conf_path = path;
+
+    QSettings settings(path, QSettings::IniFormat);
+    settings.beginWriteArray("apps", ota_apps.count());
+    int i = 0;
+    for (const auto& app : ota_apps) {
+        settings.setArrayIndex(i++);
+        settings.setValue("path", app.path);
+        settings.setValue("version", app.info.version);
+        settings.setValue("timestamp", app.info.timestamp);
+        settings.setValue("size", app.info.size);
+        settings.setValue("crc", app.info.crc);
+    }
+    settings.endArray();
+    settings.setValue("latest_version", ota_latest_version);
+
+    return true;
+}
+
+// set the latest version text color to light green,
+// others are white
+void programmer::updateOtaAppList() {
+    for (int i = 0; i < ota.lstApps->count(); i++) {
+        auto item = ota.lstApps->item(i);
+        uint32_t version = item->data(Qt::UserRole).toUInt();
+        if (version == ota_latest_version) {
+            item->setTextColor(Qt::green);
+        } else {
+            item->setTextColor(Qt::black);
+        }
+    }
 }
 
 void programmer::slotOpenFlash() {

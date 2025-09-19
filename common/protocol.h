@@ -44,8 +44,9 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
-#include <common.h>
 #include <libemb/emb_config.h>
+
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -188,8 +189,16 @@ uint8_t ldr_pkt_calc_sum(ldr_packet_t* pkt);
 
 ////////////////////////////// ota related structures //////////////////////////////
 
+#define OTA_OK 0
+#define OTA_SERVER_ERROR 1
+#define OTA_UNKNOWN_VERSION 2
+#define OTA_OFFSET_OUT_OF_RANGE 3
+
 // OTA2APP_CMD_LATEST_APP_INFO dat, little-endian
-typedef app_info_t latest_app_info_t;
+typedef struct {
+    uint8_t status;  // 0: success, 1: server error
+    app_info_t info;
+} latest_app_info_t;
 
 // APP2OTA_CMD_GET_APP_DATA dat, little-endian
 typedef struct {
@@ -200,7 +209,7 @@ typedef struct {
 
 // OTA2APP_CMD_APP_DATA dat, little-endian
 typedef struct {
-    uint8_t status;  // 0: success, 1: unknown version, 2: offset out of range
+    uint8_t status;  // 0: success, 2: unknown version, 3: offset out of range
     uint32_t offset;
     uint32_t size;
     uint8_t dat[1];  // variable length data

@@ -5,6 +5,13 @@
 
 #include <QString>
 
+inline QString version2String(uint32_t version) {
+    return QString("%1.%2.%3")
+        .arg((version >> 24) & 0xFF)
+        .arg((version >> 16) & 0xFF)
+        .arg(version & 0xFFFF);
+}
+
 inline QString mcuid2String(uint16_t mcuid) {
     switch (mcuid) {
 #define XX(id, chip) \
