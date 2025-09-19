@@ -12,6 +12,7 @@ uint16_t cycles;
 uint16_t rx_time, rx_timeout;
 
 app_info_t xdata meta;
+ota_info_t xdata ota_info;
 
 void isp_handle(void);
 
@@ -32,18 +33,9 @@ void delay() {
 #endif
 }
 
-const char *unsafe_u8_to_bits(uint8_t v) {
-    static char bits[9];
-    uint8_t i;
-    for (i = 0; i < 8; i++) {
-        bits[7 - i] = (v & (1 << i)) ? '1' : '0';
-    }
-    bits[8] = '\0';
-    return bits;
-}
-
 void check_onchip_factory_metadata(void);
 void copy_onchip_factory_app_to_norflash(void);
+void check_ota(void);
 
 void main() {
     delay();
@@ -78,13 +70,14 @@ void main() {
     if (sysctx.st.onchip_app_valid) {
         // check if its the first time boot after firmware upgrade
         debugf1("Valid application found, checking factory metadata");
-        check_factory_metadata();
+        check_onchip_factory_metadata();
         if (sysctx.st.onchip_meta_valid) {
             copy_onchip_factory_app_to_norflash();
         }
     }
 
     if (!sysctx.st.dfu) {  // check if the force DFU mode flag was set by application
+        // check_ota();
         if (sysctx.st.onchip_app_valid) {
             debugf1("Jump to application");
             uart_release();
@@ -218,28 +211,9 @@ void isp_handle(void) {
             tx.pkt.status = LDR_STATUS_W25Q_PROGRAM_RES;
             break;
         case ISP_CMD_CALC_CRC32: {
-            uint8_t dat, j;
-            uint16_t i;
-            uint32_t crc = 0xFFFFFFFF, b;
-            const uint32_t code mask = 0x80000000;
-            const uint32_t code poly = 0x04C11DB7;
-
-            for (i = 0; i < rx.pkt.size; i++) {
-                dat = rx.pkt.dat[i];
-                dat = bitrev8(dat);
-                for (j = 0x80; j; j >>= 1) {
-                    b = crc & mask;
-                    crc <<= 1;
-                    if (dat & j) {
-                        b ^= mask;
-                    }
-                    if (b) {
-                        crc ^= poly;
-                    }
-                }
-            }
-            crc = bitrev32(crc);
-            crc ^= 0xFFFFFFFF;
+            uint32_t crc = hb_crc32_slow_init();
+            crc = hb_crc32_slow_update(crc, rx.pkt.dat, rx.pkt.size);
+            crc = hb_crc32_slow_finalize(crc);
             tx.pkt.status = LDR_STATUS_CALC_CRC32_RES;
             *(uint32_t *)&tx.pkt.dat[0] = crc;
             tx.pkt.size = 4;
@@ -258,12 +232,10 @@ void isp_handle(void) {
  * If valid, copy factory application from on-chip flash to norflash factory app area,
  * and erase on-chip flash factory metadata area
  */
-void check_factory_metadata(void) {
-    uint8_t dat, j;
+void check_onchip_factory_metadata(void) {
+    uint8_t dat;
     uint16_t addr, i;
-    uint32_t crc = 0xFFFFFFFF, b;
-    const uint32_t code mask = 0x80000000;
-    const uint32_t code poly = 0x04C11DB7;
+    uint32_t crc = hb_crc32_slow_init();
 
     // check if meta valid
     iap_read_bytes(IAP_ADDR_FACTORY_META, (uint8_t *)&meta, sizeof(app_info_t));
@@ -285,20 +257,9 @@ void check_factory_metadata(void) {
     // check meta crc
     for (i = 0, addr = IAP_ADDR_APP_START; i < meta.size; i++) {
         dat = iap_read_byte(addr++);
-        dat = bitrev8(dat);
-        for (j = 0x80; j; j >>= 1) {
-            b = crc & mask;
-            crc <<= 1;
-            if (dat & j) {
-                b ^= mask;
-            }
-            if (b) {
-                crc ^= poly;
-            }
-        }
+        crc = hb_crc32_slow_update1(crc, dat);
     }
-    crc = bitrev32(crc);
-    crc ^= 0xFFFFFFFF;
+    crc = hb_crc32_slow_finalize(crc);
     if (crc != (meta.crc)) {
         sysctx.st.onchip_meta_valid = 0;
         debugf3("Factory metadata crc error, calc=0x%08lX, meta=0x%08lX", crc, (meta.crc));
@@ -315,7 +276,7 @@ void check_factory_metadata(void) {
 // 这是为了生产方便，第一次烧录完整64KB固件即可自动将出厂固件复制到外部Flash
 void copy_onchip_factory_app_to_norflash(void) {
     uint32_t iap_addr, flash_addr, i, app_size;
-    ota_info_t xdata ota_info, ota_verify;
+    ota_info_t xdata ota_verify;
 
     union {
         uint8_t total[NORFLASH_PAGE_SIZE];
@@ -331,7 +292,7 @@ void copy_onchip_factory_app_to_norflash(void) {
 
     // 1.1 erase factory app area
     debugf1("Erasing norflash factory app area...");
-    // no need to erase all 64KB, just erase the sectors that will be written
+    // no need to erase all NORFLASH_APP_SIZE, just erase the sectors that will be written
     app_size = (meta.size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1);
     debugf3("App size=0x%08lX, erase size=0x%08lX", meta.size, app_size);
     flash_addr = NORFLASH_FACTORY_APP_ADDR;
@@ -415,6 +376,8 @@ void copy_onchip_factory_app_to_norflash(void) {
         sys_reset();
         while (1);
     }
+    // 2.6 update otaid
+    sysctx.st.otaid = (sysctx.st.otaid == FLASH_OTA_ID_MASTER) ? FLASH_OTA_ID_BACKUP : FLASH_OTA_ID_MASTER;
 
     /////////////////////////// 3. erase on-chip factory metadata ///////////////////////////
     debugf1("Erasing on-chip factory metadata...");
@@ -426,3 +389,89 @@ void copy_onchip_factory_app_to_norflash(void) {
     debugf1("Erase done.");
     sysctx.st.onchip_meta_valid = 0;
 }
+
+// bool try_load_flash_app(uint8_t appid) {
+//     uint32_t iap_addr, flash_addr, i, app_size, crc;
+//     flash_app_info_t *papp = NULL;
+
+//     // read app info
+//     if (appid == FLASH_APP_ID_FACTORY) {
+//         flash_addr = NORFLASH_FACTORY_APP_ADDR;
+//         papp = &ota_info.factory;
+//     } else if (appid == FLASH_APP_ID_APP1) {
+//         flash_addr = NORFLASH_APP1_ADDR;
+//         papp = &ota_info.app1;
+//     } else {  // appid == FLASH_APP_ID_APP2
+//         flash_addr = NORFLASH_APP2_ADDR;
+//         papp = &ota_info.app2;
+//     }
+//     debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", appid, papp->info.size, papp->info.crc);
+//     debugf4("Version: %bu.%bu.%u",
+//             version_major(papp->info.version),
+//             version_minor(papp->info.version),
+//             version_patch(papp->info.version));
+//     if (papp->info.size == 0 || papp->info.size > APP_MAX_SIZE) {
+//         debugf2("App size invalid, size=0x%08lX", papp->info.size);
+//         return false;
+//     }
+
+//     // validate crc
+
+
+//     return true;
+// }
+
+// /** boot order:
+//  * 1. current_app
+//  * 2. the other app
+//  * 3. factory app
+//  * 4. on-chip app
+//  */
+// void check_ota(void) {
+//     uint8_t boot[3], n = 0, i;
+//     bool retry_failed = false;
+
+//     debugf1("Checking ota info...");
+//     // find out which ota info is older(smaller seq)
+//     findout_which_ota_info_is_older();
+
+// retry:
+//     // read out the newer ota info
+//     if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
+//         debugf1("Loading ota info from backup");
+//         norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+//     } else {
+//         debugf1("Loading ota info from master");
+//         norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+//     }
+//     debugf3("ota_info.seq=0x%08lX, current_app=%bu", ota_info.seq, ota_info.current_app);
+//     if (ota_info.current_app > FLASH_APP_ID_MAX) {
+//         debugf1("No valid current_app");
+//         if (!retry_failed) {
+//             sysctx.st.otaid = (sysctx.st.otaid == FLASH_OTA_ID_MASTER) ? FLASH_OTA_ID_BACKUP : FLASH_OTA_ID_MASTER;
+//             retry_failed = true;
+//             goto retry;
+//         } else {
+//             debugf1("No valid app on flash");
+//             return;
+//         }
+//     } else if(ota_info.current_app == FLASH_APP_ID_FACTORY) {
+//         boot[n++] = FLASH_APP_ID_FACTORY;
+//     } else {
+//         boot[n++] = ota_info.current_app;
+//         boot[n++] = (ota_info.current_app == FLASH_APP_ID_APP1) ? FLASH_APP_ID_APP2 : FLASH_APP_ID_APP1;
+//         boot[n++] = FLASH_APP_ID_FACTORY;
+//     }
+
+//     for (i = 0; i < n; i++) {
+//         debugf2("Trying to load app%bu...", boot[i]);
+//         if (try_load_flash_app(boot[i])) {
+//             sysctx.st.appid = boot[i];
+//             sysctx.st.onchip_app_valid = true;
+//             debugf2("App%bu loaded", boot[i]);
+//             return;
+//         } else {
+//             debugf2("Load app%bu failed", boot[i]);
+//         }
+//     }
+// }

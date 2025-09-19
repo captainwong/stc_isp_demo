@@ -402,3 +402,40 @@ uint32_t hb_crc32(const uint8_t* dat, size_t len) {
     crc = bitrev32(crc);      // Reverse the bits of the final CRC value
     return crc ^ 0xFFFFFFFF;  // Final XOR value for CRC-32
 }
+
+uint32_t hb_crc32_slow_init(void) {
+    return 0xFFFFFFFF;  // Initial value for CRC-32
+}
+
+uint32_t hb_crc32_slow_update1(uint32_t crc, uint8_t dat) {
+    const uint32_t EMB_CODE_MODIFIER mask = 0x80000000;
+    const uint32_t EMB_CODE_MODIFIER poly = 0x04C11DB7;
+    uint32_t b;
+    uint8_t j;
+
+    dat = bitrev8(dat);
+    for (j = 0x80; j; j >>= 1) {
+        b = crc & mask;
+        crc <<= 1;
+        if (dat & j) {
+            b ^= mask;
+        }
+        if (b) {
+            crc ^= poly;
+        }
+    }
+
+    return crc;
+}
+
+uint32_t hb_crc32_slow_update(uint32_t crc, const uint8_t* dat, size_t len) {
+    while (len--)
+        crc = hb_crc32_slow_update1(crc, *dat++);
+    return crc;
+}
+
+uint32_t hb_crc32_slow_finalize(uint32_t crc) {
+    crc = bitrev32(crc);
+    crc ^= 0xFFFFFFFF;
+    return crc;
+}

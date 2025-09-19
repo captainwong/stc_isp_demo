@@ -14,9 +14,9 @@
  *   - 512B page erase
  *   - 512B page program
  *   - partition: aiapp-isp: set user eeprom size to 64KB
- *      - 0x0000 - 0x27FF : 10KB for bootloader
- *      - 0x2800 - 0x29FF : 512B for factory metadata
- *      - 0x2A00 - 0xFFFF : 53.5KB for application
+ *      - 0x0000 - 0x35FF : 13.5KB for bootloader
+ *      - 0x3600 - 0x37FF : 512B for factory metadata
+ *      - 0x3800 - 0xFFFF : 50KB for application
  * norflash: W25Q32JVSIQ (32Mbit, 4MB)
  *   - 4KB sector erase
  *   - 256B page program
@@ -38,6 +38,7 @@
 #define FLASH_APP_ID_FACTORY 0
 #define FLASH_APP_ID_APP1 1
 #define FLASH_APP_ID_APP2 2
+#define FLASH_APP_ID_MAX 2
 
 //////////////////////////// change this by you want ////////////////////////////
 
@@ -73,7 +74,7 @@ typedef union {
         uint8_t onchip_app_valid : 1;   // whether on-chip application is valid
         uint8_t onchip_meta_valid : 1;  // whether on-chip factory metadata is valid
         uint8_t appid : 2;              // current running application id, 0: factory, 1: app1, 2: app2
-        uint8_t otaid : 1;              // current smaller seq ota info id, 0: master, 1: backup
+        uint8_t otaid : 1;              // current old ota info id (which is ready to overwrite), 0: master, 1: backup
         uint8_t resv : 1;               // reserved
     } st;
 } system_context_t;
@@ -82,9 +83,9 @@ typedef union {
 
 //////////////////////////// on-chip flash partition ////////////////////////////
 
-#define LDR_SIZE 0x2800                                             // bootloader flash space = 10KB, at the beginning of on-chip flash
+#define LDR_SIZE 0x3600                                             // bootloader flash space = 13.5KB, at the beginning of on-chip flash
 #define FACTORY_META_SIZE 0x200                                     // factory metadata space = 512B, after bootloader
-#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 53.5KB, after metadata
+#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 50KB, after metadata
 #define IAP_ADDR_FACTORY_META LDR_SIZE                              // factory metadata address for IAP functions
 #define IAP_ADDR_APP_START (LDR_SIZE + FACTORY_META_SIZE)           // application start address for IAP functions
 #define IAP_ADDR_APP_END (IAP_ADDR_APP_START + APP_MAX_SIZE)        // application end address for IAP functions
@@ -181,7 +182,7 @@ typedef struct {
                                       */
     uint8_t current_app;             // current running application id, 0: factory, 1: app1, 2: app2
     uint8_t resv[3];                 // reserved
-    flash_app_download_ctx_t dlctx;  // downloading application context
+    flash_app_download_ctx_t dlctx;  // downloading application context, for app use, bootloader will ignore it
     flash_app_info_t factory;        // factory application info
     flash_app_info_t app1;           // ota application 1 info
     flash_app_info_t app2;           // ota application 2 info

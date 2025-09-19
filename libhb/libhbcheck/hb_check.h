@@ -173,6 +173,17 @@ HBCHECK_EXPORT_SYMBOL uint16_t hb_crc16_byte(uint16_t crc, const uint16_t dat);
 HBCHECK_EXPORT_SYMBOL uint32_t hb_crc32(const uint8_t* dat, size_t len);
 HBCHECK_EXPORT_SYMBOL uint32_t hb_crc32_byte(uint32_t crc, const uint8_t dat);
 
+//////////////////////////// slow version (without table) ////////////////////////////
+
+// these functions are useful when ROM size is very limited but RAM size is sufficient
+// these functions are not using the lookup table, so they are slower than the table version
+// the result is the same as `hb_crc32`
+
+HBCHECK_EXPORT_SYMBOL uint32_t hb_crc32_slow_init(void);
+HBCHECK_EXPORT_SYMBOL uint32_t hb_crc32_slow_update1(uint32_t crc, uint8_t dat);
+HBCHECK_EXPORT_SYMBOL uint32_t hb_crc32_slow_update(uint32_t crc, const uint8_t* dat, size_t len);
+HBCHECK_EXPORT_SYMBOL uint32_t hb_crc32_slow_finalize(uint32_t crc);
+
 #ifdef __cplusplus
 }
 #endif

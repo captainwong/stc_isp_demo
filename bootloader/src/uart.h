@@ -16,6 +16,7 @@ void uart_run(void);
 
 #ifdef DEBUG
 void uart_debug(const char* fmt, ...);
+const char *unsafe_u8_to_bits(uint8_t v);
 #define debugf1(fmt) uart_debug(fmt)
 #define debugf2(fmt, _1) uart_debug(fmt, _1)
 #define debugf3(fmt, _1, _2) uart_debug(fmt, _1, _2)

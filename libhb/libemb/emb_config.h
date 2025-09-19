@@ -154,11 +154,12 @@
 // bool
 #ifndef __bool_true_false_are_defined
 
-#if defined(__C51__)
+#if defined(__C51__) && defined(EMB_ENABLE_BIT_AS_BOOL)
 // Even C51 can use bit as bool, but bool maybe used as function parameter or return value,
-// that may cause bizarre problems, so we use unsigned char as bool
-typedef unsigned char bool;
-#else  // AVR can use unsigned char as bool
+// that may cause bizarre problems, so be careful when you enable this option.
+// To enable this option, define EMB_ENABLE_BIT_AS_BOOL in your project settings.
+typedef bit bool;
+#else  // use unsigned char as bool
 typedef unsigned char bool;
 #endif
 

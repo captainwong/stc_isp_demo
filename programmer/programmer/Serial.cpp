@@ -10,7 +10,7 @@ Serial::Serial(QObject* parent) : QSerialPort(parent) {
 void Serial::slot_serial_on_read() {
     auto _all = readAll();
     // qdebug_qbytes(_all);
-    MYQDEBUG3 << "RX" << _all.length() << bytes2string(_all);
+    // MYQDEBUG3 << "RX" << _all.length() << bytes2string(_all);
 
     for (auto c : _all) {
         ldr_parse(&ctx, &rx, c);
@@ -186,6 +186,6 @@ void Serial::send_tx(isp_packet_t* tx) {
     isp_pkt_sum(tx) = isp_pkt_calc_sum(tx);
     auto dat = QByteArray((const char*)tx->buf, isp_pkt_len(tx));
     // qdebug_qbytes(dat);
-    MYQDEBUG3 << "TX" << dat.length() << bytes2string(dat);
+    // MYQDEBUG3 << "TX" << dat.length() << bytes2string(dat);
     write(dat);
 }

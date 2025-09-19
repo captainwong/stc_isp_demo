@@ -206,4 +206,15 @@ void uart_debug(const char* fmt, ...) {
     uart_send_tx();
     uart_wait_sent();
 }
+
+const char *unsafe_u8_to_bits(uint8_t v) {
+    static char bits[9];
+    uint8_t i;
+    for (i = 0; i < 8; i++) {
+        bits[7 - i] = (v & (1 << i)) ? '1' : '0';
+    }
+    bits[8] = '\0';
+    return bits;
+}
+
 #endif /* DEBUG */
