@@ -275,7 +275,7 @@ void check_onchip_factory_metadata(void) {
 // 并擦除片上固件元数据，防止下次上电时重复复制
 // 这是为了生产方便，第一次烧录完整64KB固件即可自动将出厂固件复制到外部Flash
 void copy_onchip_factory_app_to_norflash(void) {
-    uint32_t iap_addr, flash_addr, i, app_size;
+    uint32_t iap_addr, flash_addr, i, erase_size;
     ota_info_t xdata ota_verify;
 
     union {
@@ -293,10 +293,10 @@ void copy_onchip_factory_app_to_norflash(void) {
     // 1.1 erase factory app area
     debugf1("Erasing norflash factory app area...");
     // no need to erase all NORFLASH_APP_SIZE, just erase the sectors that will be written
-    app_size = (meta.size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1);
-    debugf3("App size=0x%08lX, erase size=0x%08lX", meta.size, app_size);
+    erase_size = (meta.size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1);
+    debugf3("App size=0x%08lX, erase size=0x%08lX", meta.size, erase_size);
     flash_addr = NORFLASH_FACTORY_APP_ADDR;
-    for (i = 0; i < app_size; i += NORFLASH_SECTOR_SIZE) {
+    for (i = 0; i < erase_size; i += NORFLASH_SECTOR_SIZE) {
         debugf2("Erasing sector at 0x%08lX...", flash_addr);
         norflash_erase_sector(flash_addr);
         flash_addr += NORFLASH_SECTOR_SIZE;
@@ -351,20 +351,17 @@ void copy_onchip_factory_app_to_norflash(void) {
         norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
     }
     // 2.3 update ota info
-    ota_info.seq++;  // make it newer
+    ota_info.seq = 0;  // every time its a factory update, reset the flash ota info seqs to 0
     ota_info.current_app = FLASH_APP_ID_FACTORY;
     ota_info.factory.info = meta;
     invalidate_flash_app_info(ota_info.app1);
     invalidate_flash_app_info(ota_info.app2);
     invalidate_flash_app_download_ctx(ota_info.dlctx);
-    // 2.4 write updated ota info
-    if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
-        norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
-        norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
-    } else {
-        norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
-        norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
-    }
+    // 2.4 write updated ota info to both master & backup
+    norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
+    norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
+    norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
     // 2.5 verify updated ota info
     if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
         norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_verify, sizeof(ota_info_t));
@@ -556,6 +553,21 @@ retry:
             sysctx.st.appid = boot[i];
             sysctx.st.onchip_app_valid = true;
             debugf2("App%bu loaded", boot[i]);
+
+            // update ota_info
+            if (ota_info.current_app != boot[i]) {
+                debugf3("ota.current_app %bu != real app %bu, update ota info", ota_info.current_app, boot[i]);
+                ota_info.seq++;
+                ota_info.current_app = boot[i];
+                if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
+                    norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
+                    norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                } else {
+                    norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
+                    norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                }
+            }
+
             return;
         } else {
             debugf2("Load app%bu failed", boot[i]);

@@ -1,3 +1,4 @@
+#include <bsp/norflash.h>
 #include <sys/build_time.h>
 #include <sys/gpio.h>
 #include <sys/sys.h>
@@ -7,6 +8,9 @@
 
 system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
 uint16_t counter_1ms = 0;
+uint16_t counter_1s = 0;
+bool should_check_ota = false;
+ota_info_t xdata ota_info;
 
 void isp_handle(void);
 
@@ -14,6 +18,11 @@ void t0_isr() INTERRUPT(TMR0_VECTOR) {
     if (++counter_1ms == 1000) {
         counter_1ms = 0;
         led_run_toggle();
+
+        if (++counter_1s == 5) {  // 暂时每5秒检测一次有没有OTA更新
+            counter_1s = 0;
+            should_check_ota = true;
+        }
     }
 }
 
@@ -37,6 +46,31 @@ void main() {
 
     debugf1("App start");
 
+    findout_which_ota_info_is_older();
+    debugf2("otaid=%bu", sysctx.st.otaid);
+    // read out the newer ota info
+    if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
+        norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    } else {
+        norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    }
+
+    {
+        flash_app_info_t *papp = NULL;
+        if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
+            papp = &ota_info.factory;
+        } else if (ota_info.current_app == FLASH_APP_ID_APP1) {
+            papp = &ota_info.app1;
+        } else {  // ota_info.current_app == FLASH_APP_ID_APP2
+            papp = &ota_info.app2;
+        }
+        debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", ota_info.current_app, papp->info.size, papp->info.crc);
+        debugf4("Version: %bu.%bu.%u",
+                version_major(papp->info.version),
+                version_minor(papp->info.version),
+                version_patch(papp->info.version));
+    }
+
     while (1) {
         uart_run();
         if (isp_parse_ok) {
@@ -47,6 +81,11 @@ void main() {
         if (key_boot_pressed()) {
             sysctx.st.dfu = 1;
             sys_reset();
+        }
+
+        if (should_check_ota) {
+            should_check_ota = false;
+            uart_send_check_ota();
         }
     }
 }
@@ -80,6 +119,17 @@ void isp_handle(void) {
             tx.pkt.size = 8;
             *(uint32_t *)&tx.pkt.dat[0] = APP_VERSION;
             *(uint32_t *)&tx.pkt.dat[4] = APP_BUILD_TIME;
+            break;
+        case OTA2APP_CMD_LATEST_APP_INFO:
+            if (rx.pkt.size == sizeof(latest_app_info_t)) {
+                latest_app_info_t *info = (latest_app_info_t *)rx.pkt.dat;
+                app_info_to_big_endian(*info);
+                debugf3("Latest App info: size=0x%08lX, crc=0x%08lX", info->size, info->crc);
+                debugf4("Version: %bu.%bu.%u",
+                        version_major(info->version),
+                        version_minor(info->version),
+                        version_patch(info->version));
+            }
             break;
         default:
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;

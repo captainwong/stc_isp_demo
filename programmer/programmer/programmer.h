@@ -73,9 +73,6 @@ private:
     QGroupBox* grpLdr{};
     QLabel* lblLdrVersion{};
     QLineEdit* leLdrVersion{};
-    // QLabel* lblLdrOutput{};
-    // QPlainTextEdit* leLdrOutput{};
-    // QPushButton* btnClearOutput{};
     QPushButton* btnReadVersion{};
     QPushButton* btnReadChipInfo{};
     QPushButton* btnEraseAll{};
@@ -102,6 +99,15 @@ private:
         QPushButton* btnReadChipInfo{};
 
     } app{};
+
+    ///////////////// ota-server /////////////////
+    struct {
+        QGroupBox* grp{};
+        QLabel* lblConfPath{};
+        QLineEdit* leConfPath{};
+        QPushButton* btnLoadConf{};
+
+    } ota{};
 
     QByteArray e2{};
     size_t e2sent = 0, e2recv = 0;

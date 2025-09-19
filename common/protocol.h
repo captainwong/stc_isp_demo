@@ -44,6 +44,7 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
+#include <common.h>
 #include <libemb/emb_config.h>
 
 #ifdef __cplusplus
@@ -56,7 +57,7 @@ extern "C" {
 
 #define PKT_MAX_LEN 255
 
-////////////////////////////// programmer packet //////////////////////////////
+////////////////////////////// programmer/ota-server packet //////////////////////////////
 
 #define ISP_PKT_HEAD '#'
 #define ISP_PKT_END '$'
@@ -78,6 +79,9 @@ extern "C" {
 #define ISP_CMD_READ_LDR_VERSION 0xB7  // read bootloader version & build time
 #define ISP_CMD_READ_APP_VERSION 0xB8  // read application version & build time
 #define ISP_CMD_CALC_CRC32 0xB9        // calculate crc32 of given data
+// C* app <--> ota server
+#define OTA2APP_CMD_LATEST_APP_INFO 0xC0  // latest application info
+#define OTA2APP_CMD_APP_DATA 0xC1         // application data
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
@@ -120,7 +124,7 @@ void isp_parse(isp_pkt_parse_context_t* ctx, isp_packet_t* rx, uint8_t b);
 
 uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 
-////////////////////////////// bootloader packet //////////////////////////////
+////////////////////////////// bootloader/app packet //////////////////////////////
 
 #define LDR_PKT_HEAD '@'
 #define LDR_PKT_END '$'
@@ -141,6 +145,9 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_LDR_VERSION 0x89
 #define LDR_STATUS_APP_VERSION 0x8A
 #define LDR_STATUS_CALC_CRC32_RES 0x8B
+// C* app <--> ota server
+#define APP2OTA_CMD_GET_LATEST_APP_INFO 0xC0
+#define APP2OTA_CMD_GET_APP_DATA 0xC1
 
 typedef union {
     uint8_t buf[PKT_MAX_LEN];
@@ -178,6 +185,26 @@ void ldr_parse(ldr_pkt_parse_context_t* ctx, ldr_packet_t* rx, uint8_t b);
 #endif
 
 uint8_t ldr_pkt_calc_sum(ldr_packet_t* pkt);
+
+////////////////////////////// ota related structures //////////////////////////////
+
+// OTA2APP_CMD_LATEST_APP_INFO dat, little-endian
+typedef app_info_t latest_app_info_t;
+
+// APP2OTA_CMD_GET_APP_DATA dat, little-endian
+typedef struct {
+    uint32_t version;
+    uint32_t offset;
+    uint32_t size;
+} get_app_data_req_t;
+
+// OTA2APP_CMD_APP_DATA dat, little-endian
+typedef struct {
+    uint8_t status;  // 0: success, 1: unknown version, 2: offset out of range
+    uint32_t offset;
+    uint32_t size;
+    uint8_t dat[1];  // variable length data
+} get_app_data_res_t;
 
 #if !(defined(__C51__) || defined(__SDCC)) || defined(VSCODE)
 #pragma pack()

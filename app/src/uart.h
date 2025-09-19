@@ -12,6 +12,7 @@ void uart_init(void);
 void uart_send_tx(void);
 void uart_wait_sent(void);
 void uart_run(void);
+void uart_send_check_ota(void);
 
 #ifdef DEBUG
 void uart_debug(const char* fmt, ...);
