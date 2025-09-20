@@ -1040,6 +1040,10 @@ void programmer::slotAddOtaApp() {
         }
 
         QString newpath = QString("%1/%2.hex").arg(folder).arg(version2String(app.info.version));
+        // delete old one if exists
+        if (QFile::exists(newpath)) {
+            QFile::remove(newpath);
+        }
         // copy user app
         if (!QFile::copy(userapp, newpath)) {
             QMessageBox::warning(this, tr("Error"), tr("Failed to copy user application hex file to %1").arg(newpath));
