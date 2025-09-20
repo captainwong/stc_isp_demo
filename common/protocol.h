@@ -209,10 +209,11 @@ typedef struct {
 
 // OTA2APP_CMD_APP_DATA dat, little-endian
 typedef struct {
-    uint8_t status;  // 0: success, 2: unknown version, 3: offset out of range
-    uint32_t offset;
-    uint32_t size;
-    uint8_t dat[1];  // variable length data
+    uint8_t status;   // 0: success, 2: unknown version, 3: offset out of range
+    uint32_t offset;  // offset of the data
+    uint32_t size;    // size of the data
+    uint32_t crc;     // crc32 of the data
+    uint8_t dat[1];   // variable length data
 } get_app_data_res_t;
 
 #if !(defined(__C51__) || defined(__SDCC)) || defined(VSCODE)

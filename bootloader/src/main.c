@@ -12,7 +12,6 @@ uint16_t cycles;
 uint16_t rx_time, rx_timeout;
 
 app_info_t xdata meta;
-ota_info_t xdata ota_info;
 
 void isp_handle(void);
 
@@ -86,7 +85,6 @@ void main() {
             jump_to_on_chip_app_program(0);  // LJMP #IAP_ADDR_APP_START, from here the CPU is running application code
         } else {
             debugf1("No valid application, stay in bootloader");
-            sysctx.st.dfu = 1;  // force DFU mode
         }
     }
 
@@ -353,27 +351,30 @@ void copy_onchip_factory_app_to_norflash(void) {
     // 2.3 update ota info
     ota_info.seq = 0;  // every time its a factory update, reset the flash ota info seqs to 0
     ota_info.current_app = FLASH_APP_ID_FACTORY;
-    ota_info.factory.info = meta;
-    invalidate_flash_app_info(ota_info.app1);
-    invalidate_flash_app_info(ota_info.app2);
-    invalidate_flash_app_download_ctx(ota_info.dlctx);
+    ota_info.factory = meta;
+    init_app_info(ota_info.app1);
+    init_app_info(ota_info.app2);
+    init_flash_app_download_ctx(ota_info.dlctx);
     // 2.4 write updated ota info to both master & backup
+    // master
     norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
     norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
-    norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
-    norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
-    // 2.5 verify updated ota info
-    if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
-        norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_verify, sizeof(ota_info_t));
-    } else {
-        norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_verify, sizeof(ota_info_t));
-    }
+    norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_verify, sizeof(ota_info_t));
     if (memcmp(&ota_info, &ota_verify, sizeof(ota_info_t)) != 0) {
         debugf1("Ota info verify failed!");
         sys_reset();
         while (1);
     }
-    // 2.6 update otaid
+    // backup
+    norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
+    norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+    norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_verify, sizeof(ota_info_t));
+    if (memcmp(&ota_info, &ota_verify, sizeof(ota_info_t)) != 0) {
+        debugf1("Ota info verify failed!");
+        sys_reset();
+        while (1);
+    }
+    // 2.5 update otaid
     sysctx.st.otaid = (sysctx.st.otaid == FLASH_OTA_ID_MASTER) ? FLASH_OTA_ID_BACKUP : FLASH_OTA_ID_MASTER;
 
     /////////////////////////// 3. erase on-chip factory metadata ///////////////////////////
@@ -389,7 +390,7 @@ void copy_onchip_factory_app_to_norflash(void) {
 
 bool try_load_flash_app(uint8_t appid) {
     uint32_t iap_addr, flash_addr, i, crc;
-    flash_app_info_t *papp = NULL;
+    app_info_t *papp = NULL;
     bool need_copy_flash_to_chip = false;
     uint8_t fail_times = 0;
 
@@ -412,28 +413,28 @@ bool try_load_flash_app(uint8_t appid) {
         flash_addr = NORFLASH_APP2_ADDR;
         papp = &ota_info.app2;
     }
-    debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", appid, papp->info.size, papp->info.crc);
+    debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", appid, papp->size, papp->crc);
     debugf4("Version: %bu.%bu.%u",
-            version_major(papp->info.version),
-            version_minor(papp->info.version),
-            version_patch(papp->info.version));
-    if (papp->info.size == 0 || papp->info.size > APP_MAX_SIZE) {
-        debugf2("App size invalid, size=0x%08lX", papp->info.size);
+            version_major(papp->version),
+            version_minor(papp->version),
+            version_patch(papp->version));
+    if (papp->size == 0 || papp->size > APP_MAX_SIZE) {
+        debugf2("App size invalid, size=0x%08lX", papp->size);
         return false;
     }
 
     // validate crc
     crc = hb_crc32_slow_init();
-    for (i = 0; i < papp->info.size;) {
-        uint16_t len = (papp->info.size - i) > sizeof(buf.total) ? sizeof(buf.total) : (papp->info.size - i);
+    for (i = 0; i < papp->size;) {
+        uint16_t len = (papp->size - i) > sizeof(buf.total) ? sizeof(buf.total) : (papp->size - i);
         norflash_read(flash_addr, buf.total, len);
         crc = hb_crc32_slow_update(crc, buf.total, len);
         i += len;
         flash_addr += len;
     }
     crc = hb_crc32_slow_finalize(crc);
-    if (crc != papp->info.crc) {
-        debugf3("App crc error, calc=0x%08lX, info=0x%08lX", crc, papp->info.crc);
+    if (crc != papp->crc) {
+        debugf3("App crc error, calc=0x%08lX, info=0x%08lX", crc, papp->crc);
         return false;
     }
 
@@ -442,8 +443,8 @@ bool try_load_flash_app(uint8_t appid) {
         iap_addr = IAP_ADDR_APP_START;
         flash_addr = get_norflash_app_addr(appid);
         crc = hb_crc32_slow_init();  // calc on-chip app crc
-        for (i = 0; i < papp->info.size;) {
-            uint16_t len = (papp->info.size - i);
+        for (i = 0; i < papp->size;) {
+            uint16_t len = (papp->size - i);
             if (len > sizeof(buf.split.a)) {
                 len = sizeof(buf.split.a);
             }
@@ -461,8 +462,8 @@ bool try_load_flash_app(uint8_t appid) {
         }
 
         crc = hb_crc32_slow_finalize(crc);
-        if (!need_copy_flash_to_chip && crc != papp->info.crc) {
-            debugf3("On-chip app crc error, calc=0x%08lX, info=0x%08lX", crc, papp->info.crc);
+        if (!need_copy_flash_to_chip && crc != papp->crc) {
+            debugf3("On-chip app crc error, calc=0x%08lX, info=0x%08lX", crc, papp->crc);
             need_copy_flash_to_chip = true;
         }
     }
@@ -475,10 +476,14 @@ bool try_load_flash_app(uint8_t appid) {
     debugf1("Will copy flash app to on-chip app area");
     debugf1("Erasing on-chip app area...");
     for (iap_addr = IAP_ADDR_APP_START; iap_addr < IAP_ADDR_APP_END;) {
-        if (!iap_erase_page_check(iap_addr) && ++fail_times < 30) {
-            debugf1("Erase on-chip app area failed!");
-            delay_ms(100);
-            continue;
+        if (!iap_erase_page_check(iap_addr)) {
+            if (++fail_times < 30) {
+                debugf1("Erase on-chip app area failed!");
+                delay_ms(100);
+                continue;
+            } else {
+                return false;
+            }
         }
         iap_addr += IAP_PAGE_SIZE;
     }
@@ -488,13 +493,17 @@ bool try_load_flash_app(uint8_t appid) {
     iap_addr = IAP_ADDR_APP_START;
     flash_addr = get_norflash_app_addr(appid);
     fail_times = 0;
-    for (i = 0; i < papp->info.size;) {
-        uint16_t len = (papp->info.size - i) > sizeof(buf.total) ? sizeof(buf.total) : (papp->info.size - i);
+    for (i = 0; i < papp->size;) {
+        uint16_t len = (papp->size - i) > sizeof(buf.total) ? sizeof(buf.total) : (papp->size - i);
         norflash_read(flash_addr, buf.total, len);
-        if (!iap_write_bytes_check(iap_addr, buf.total, len) && ++fail_times < 30) {
-            debugf1("Program on-chip app area failed!");
-            delay_ms(100);
-            continue;
+        if (!iap_write_bytes_check(iap_addr, buf.total, len)) {
+            if (++fail_times < 30) {
+                debugf1("Program on-chip app area failed!");
+                delay_ms(100);
+                continue;
+            } else {
+                return false;
+            }
         }
         i += len;
         iap_addr += len;

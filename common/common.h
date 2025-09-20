@@ -126,7 +126,7 @@ typedef struct {
     uint32_t version;    // major(8).minor(8).patch(16)
 } app_info_t;
 
-#define invalidate_app_info(info) (info).size = (info).crc = (info).timestamp = (info).version = 0
+#define init_app_info(info) (info).size = (info).crc = (info).timestamp = (info).version = 0
 
 #define app_info_to_little_endian(info)             \
     do {                                            \
@@ -139,46 +139,34 @@ typedef struct {
 #define app_info_to_big_endian(info) app_info_to_little_endian(info)
 
 typedef enum {
-    FLASH_APP_STATE_EMPTY = 0,
-    FLASH_APP_STATE_INVALID = 0xFF,
-    FLASH_APP_STATE_VALID = 1,
-    FLASH_APP_STATE_DOWNLOADING = 2,
-} flash_app_state_t;
-
-// application info structure, stored in norflash, big endian
-// 20 bytes
-typedef struct {
-    app_info_t info;
-    uint8_t state;
-    uint8_t resv[3];  // reserved
-} flash_app_info_t;
-
-#define invalidate_flash_app_info(finfo)       \
-    do {                                       \
-        (finfo).state = FLASH_APP_STATE_EMPTY; \
-        invalidate_app_info((finfo).info);     \
-    } while (0)
+    FLASH_APP_DL_STATE_INVALID = 0xFF,
+    FLASH_APP_DL_STATE_IDLE = 0,
+    FLASH_APP_DL_STATE_ERASING,
+    FLASH_APP_DL_STATE_DOWNLOADING,
+    FLASH_APP_DL_STATE_VERIFYING,
+    FLASH_APP_DL_STATE_APPLYING,
+} flash_app_dl_state_t;
 
 // current downloading application context, stored in norflash, big endian
-// 32 bytes
+// 12 bytes
 typedef struct {
-    flash_app_info_t info;  // retrieved from ota server
-    uint8_t appid;          // which app is downloading, 1: ota1, 2: ota2
-    uint8_t resv[3];        // reserved
-    uint32_t received;      // bytes received so far
-    uint32_t crc;           // crc32 of bytes received so far
+    uint8_t state;      // flash_app_dl_state_t
+    uint8_t appid;      // application id being downloaded, 1: app1, 2: app2, will never be 0(factory)
+    uint8_t resv[2];    // reserved
+    uint32_t received;  // bytes received so far
+    uint32_t crc;       // crc32 of bytes received so far
 } flash_app_download_ctx_t;
 
-#define invalidate_flash_app_download_ctx(ctx)                       \
-    do {                                                             \
-        invalidate_flash_app_info((ctx).info);                       \
-        (ctx).appid = 0; /* only 1,2 are valid, use 0 for invalid */ \
-        (ctx).received = 0;                                          \
-        (ctx).crc = 0;                                               \
+#define init_flash_app_download_ctx(ctx)       \
+    do {                                       \
+        (ctx).state = FLASH_APP_DL_STATE_IDLE; \
+        (ctx).appid = 0; /* 0 for idle */      \
+        (ctx).received = 0;                    \
+        (ctx).crc = 0;                         \
     } while (0)
 
 // ota info structure, stored in norflash, big endian
-// 100 bytes
+// 68 bytes
 typedef struct {
     uint32_t seq;                    /* sequence number, incremented by 1 each time ota info is updated
                                       * which seq is larger, which ota info is newer
@@ -188,10 +176,12 @@ typedef struct {
     uint8_t current_app;             // current running application id, 0: factory, 1: app1, 2: app2
     uint8_t resv[3];                 // reserved
     flash_app_download_ctx_t dlctx;  // downloading application context, for app use, bootloader will ignore it
-    flash_app_info_t factory;        // factory application info
-    flash_app_info_t app1;           // ota application 1 info
-    flash_app_info_t app2;           // ota application 2 info
+    app_info_t factory;              // factory application info
+    app_info_t app1;                 // ota application 1 info
+    app_info_t app2;                 // ota application 2 info
 } ota_info_t;
+
+extern ota_info_t xdata ota_info;
 
 #if !defined(__C51__) || defined(VSCODE)
 #pragma pack()

@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
             printf("%s: 0x%06X - 0x%06X (%d B)\n", partition.name, start, end, partition.b);
             start += partition.b;
         }
+
+        printf("\n");
     }
 
     if (1) {
@@ -82,6 +84,7 @@ int main(int argc, char *argv[]) {
             {"factory ", 60},
             {"app1    ", 60},
             {"app2    ", 60},
+            // {"dl      ", 60},
             {"app_data", 0},
         };
 

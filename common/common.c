@@ -2,6 +2,8 @@
 
 #include <bsp/norflash.h>
 
+ota_info_t xdata ota_info;
+
 void delay_ms(uint16_t ms) {
     volatile uint16_t data i;
     while (ms--) {

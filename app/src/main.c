@@ -10,7 +10,6 @@ system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
 uint16_t counter_1ms = 0;
 uint16_t counter_1s = 0;
 bool should_check_ota = false;
-ota_info_t xdata ota_info;
 
 void isp_handle(void);
 
@@ -56,7 +55,7 @@ void main() {
     }
 
     {
-        flash_app_info_t *papp = NULL;
+        app_info_t *papp = NULL;
         if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
             papp = &ota_info.factory;
         } else if (ota_info.current_app == FLASH_APP_ID_APP1) {
@@ -64,11 +63,11 @@ void main() {
         } else {  // ota_info.current_app == FLASH_APP_ID_APP2
             papp = &ota_info.app2;
         }
-        debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", ota_info.current_app, papp->info.size, papp->info.crc);
+        debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", ota_info.current_app, papp->size, papp->crc);
         debugf4("Version: %bu.%bu.%u",
-                version_major(papp->info.version),
-                version_minor(papp->info.version),
-                version_patch(papp->info.version));
+                version_major(papp->version),
+                version_minor(papp->version),
+                version_patch(papp->version));
     }
 
     while (1) {
@@ -129,6 +128,32 @@ void isp_handle(void) {
                         version_major(info->info.version),
                         version_minor(info->info.version),
                         version_patch(info->info.version));
+                if (info->status == OTA_OK) {
+                    if (info->info.size > 0 && info->info.size <= APP_MAX_SIZE) {
+                        // flash_app_info_t *papp = NULL;
+                        // if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
+                        //     papp = &ota_info.factory;
+                        // } else if (ota_info.current_app == FLASH_APP_ID_APP1) {
+                        //     papp = &ota_info.app1;
+                        // } else {  // ota_info.current_app == FLASH_APP_ID_APP2
+                        //     papp = &ota_info.app2;
+                        // }
+                        // if(info->info.version > papp->info.version) {
+                        //     debugf1("Newer app found, start to download");
+                        //     ota_info.dlctx.offset = 0;
+                        //     ota_info.dlctx.size = info->info.size;
+                        //     ota_info.dlctx.crc = info->info.crc;
+                        //     ota_info.dlctx.version = info->info.version;
+                        //     ota_info.dlctx.state = FLASH_APP_DL_STATE_DOWNLOADING;
+                        //     // reply latest app info
+                        //     reply_latest_ota_app_info(*info);
+                        // } else {
+                        //     debugf1("No newer app");
+                        // }
+                    } else {
+                        debugf1("Invalid app size");
+                    }
+                }
                 return;  // no need to reply
             }
             break;
