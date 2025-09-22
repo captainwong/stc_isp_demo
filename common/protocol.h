@@ -189,20 +189,30 @@ uint8_t ldr_pkt_calc_sum(ldr_packet_t* pkt);
 
 ////////////////////////////// ota related stuff //////////////////////////////
 
-#define OTA_OK 0                   // success
-#define OTA_ERROR 1                // common error
-#define OTA_UNKNOWN_VERSION 2      // unknown version
-#define OTA_OFFSET_OUT_OF_RANGE 3  // offset out of range
-#define OTA_SERVER_ERROR 4         // server error
-#define OTA_NO_NEW_VERSION 5       // no new version
-#define OTA_INVALID_REQ 6          // invalid request
+// #define OTA_OK 0                   // success
+// #define OTA_ERROR 1                // common error
+// #define OTA_UNKNOWN_VERSION 2      // unknown version
+// #define OTA_OFFSET_OUT_OF_RANGE 3  // offset out of range
+// #define OTA_SERVER_ERROR 4         // server error
+// #define OTA_NO_NEW_VERSION 5       // no new version
+// #define OTA_INVALID_REQ 6          // invalid request
+
+typedef enum {
+    OTA_OK = 0,                   // success
+    OTA_ERROR = 1,                // common error
+    OTA_UNKNOWN_VERSION = 2,      // unknown version
+    OTA_OFFSET_OUT_OF_RANGE = 3,  // offset out of range
+    OTA_SERVER_ERROR = 4,         // server error
+    OTA_NO_NEW_VERSION = 5,       // no new version
+    OTA_INVALID_REQ = 6           // invalid request
+} ota_result_t;
 
 // APP2OTA_CMD_LATEST_APP_INFO dat, little-endian
 typedef app_info_t get_latest_app_info_req_t;
 
 // OTA2APP_CMD_LATEST_APP_INFO dat, little-endian
 typedef struct {
-    uint8_t status;  // OTA_* status
+    uint8_t result;  // ota_result_t
     app_info_t info;
 } latest_app_info_t;
 
@@ -215,7 +225,7 @@ typedef struct {
 
 // OTA2APP_CMD_APP_DATA dat, little-endian
 typedef struct {
-    uint8_t status;   // OTA_* status
+    uint8_t result;   // ota_result_t
     uint32_t offset;  // offset of the data
     uint32_t size;    // size of the data
     uint32_t crc;     // crc32 of the data

@@ -520,13 +520,13 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             get_latest_app_info_req_t* req = (get_latest_app_info_req_t*)pkt->pkt.dat;
             for (auto riter = ota_apps.rbegin(); riter != ota_apps.rend(); riter++) {
                 if (riter->second.info.version > req->version) {
-                    info.status = OTA_OK;
+                    info.result = OTA_OK;
                     info.info = riter->second.info;
                     serial->reply_latest_ota_app_info(info);
                     return;
                 }
             }
-            info.status = OTA_NO_NEW_VERSION;
+            info.result = OTA_NO_NEW_VERSION;
             serial->reply_latest_ota_app_info(info);
             break;
         }

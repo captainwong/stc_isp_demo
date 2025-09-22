@@ -6,11 +6,19 @@
 
 #include "uart.h"
 
+enum {
+    OTA_STATE_IDLE,
+    OTA_STATE_TIMEUP,
+    OTA_STATE_TIMEOUT,
+    OTA_STATE_CHECKING,
+    OTA_STATE_PREPARING,
+};
+
 system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
 uint16_t counter_1ms = 0;
 uint16_t counter_1s = 0;
-bool should_check_ota = false;
 app_info_t *papp = NULL;
+uint8_t ota_state = OTA_STATE_IDLE;
 
 void isp_handle(void);
 
@@ -21,7 +29,9 @@ void t0_isr() INTERRUPT(TMR0_VECTOR) {
 
         if (++counter_1s == 5) {  // 暂时每5秒检测一次有没有OTA更新
             counter_1s = 0;
-            should_check_ota = true;
+            if (ota_state == OTA_STATE_IDLE) {
+                ota_state = OTA_STATE_TIMEUP;
+            }
         }
     }
 }
@@ -80,8 +90,8 @@ void main() {
             sys_reset();
         }
 
-        if (should_check_ota) {
-            should_check_ota = false;
+        if (ota_state == OTA_STATE_TIMEUP) {
+            ota_state = OTA_STATE_CHECKING;
             uart_send_check_ota(papp);
         }
     }
@@ -118,38 +128,20 @@ void isp_handle(void) {
             *(uint32_t *)&tx.pkt.dat[4] = APP_BUILD_TIME;
             break;
         case OTA2APP_CMD_LATEST_APP_INFO:
-            if (rx.pkt.size == sizeof(latest_app_info_t)) {
+            if (rx.pkt.size == sizeof(latest_app_info_t) && ota_state == OTA_STATE_CHECKING) {
                 latest_app_info_t *info = (latest_app_info_t *)rx.pkt.dat;
                 app_info_to_big_endian(info->info);
-                debugf4("Latest App info: status=%bu, size=0x%08lX, crc=0x%08lX", info->status, info->info.size, info->info.crc);
+                debugf4("Latest App info: result=%bu, size=0x%08lX, crc=0x%08lX",
+                        info->result, info->info.size, info->info.crc);
                 debugf4("Version: %bu.%bu.%u",
                         version_major(info->info.version),
                         version_minor(info->info.version),
                         version_patch(info->info.version));
-                if (info->status == OTA_OK) {
-                    if (info->info.size > 0 && info->info.size <= APP_MAX_SIZE) {
-                        // flash_app_info_t *papp = NULL;
-                        // if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
-                        //     papp = &ota_info.factory;
-                        // } else if (ota_info.current_app == FLASH_APP_ID_APP1) {
-                        //     papp = &ota_info.app1;
-                        // } else {  // ota_info.current_app == FLASH_APP_ID_APP2
-                        //     papp = &ota_info.app2;
-                        // }
-                        // if(info->info.version > papp->info.version) {
-                        //     debugf1("Newer app found, start to download");
-                        //     ota_info.dlctx.offset = 0;
-                        //     ota_info.dlctx.size = info->info.size;
-                        //     ota_info.dlctx.crc = info->info.crc;
-                        //     ota_info.dlctx.version = info->info.version;
-                        //     ota_info.dlctx.state = FLASH_APP_DL_STATE_DOWNLOADING;
-                        //     // reply latest app info
-                        //     reply_latest_ota_app_info(*info);
-                        // } else {
-                        //     debugf1("No newer app");
-                        // }
+                if (info->result == OTA_OK) {
+                    if (info->info.version > papp->version) {
+                        ota_state = OTA_STATE_PREPARING;
                     } else {
-                        debugf1("Invalid app size");
+                        debugf1("No newer app");
                     }
                 }
                 return;  // no need to reply
