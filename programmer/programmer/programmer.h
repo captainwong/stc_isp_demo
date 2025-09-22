@@ -2,6 +2,7 @@
 
 #include <QSerialPort>
 #include <QtWidgets>
+#include <map>
 
 #include "../../common/protocol.h"
 
@@ -132,7 +133,7 @@ private:
         app_info_t info;
         QString path;
     } ota_app_t;
-    QMap<uint32_t, ota_app_t> ota_apps{}; // version -> app
+    std::map<uint32_t, ota_app_t> ota_apps{}; // version -> app
     uint32_t ota_latest_version = 0;
     QString ota_conf_path{};
 };

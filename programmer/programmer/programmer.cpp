@@ -3,6 +3,7 @@
 #include <jlib/jlib/qt/QtDebug.h>
 #include <jlib/jlib/qt/QtPathHelper.h>
 #include <jlib/jlib/qt/darkmode.h>
+#include <jlib/jlib/util/std_util.h>
 #include <libemb/emb_bitrev.h>
 #include <libhbcheck/libhbcheck.h>
 #include <libstc/disassembler/hex80.h>
@@ -517,13 +518,7 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
         case APP2OTA_CMD_GET_LATEST_APP_INFO: {
             latest_app_info_t info;
             get_latest_app_info_req_t* req = (get_latest_app_info_req_t*)pkt->pkt.dat;
-            if (ota_latest_version && ota_apps.contains(ota_latest_version)) {
-                info.info = ota_apps[ota_latest_version].info;
-                // app_info_to_big_endian(info.info);
-                info.status = OTA_OK;
-            } else {
-                info.status = OTA_SERVER_ERROR;
-            }
+            //auto riter = ota_apps.();
             serial->reply_latest_ota_app_info(info);
             break;
         }
@@ -1020,7 +1015,8 @@ void programmer::slotAddOtaApp() {
     app.info = *meta;
 
     // check if version already exists
-    if (ota_apps.contains(meta->version)) {
+    if (jlib::has_key(ota_apps, meta->version)) {
+    // if (ota_apps.contains(meta->version)) {
         auto res = QMessageBox::question(this, tr("Confirm"), tr("An application with the same version already exists. Do you want to replace it?"),
                                          QMessageBox::Yes | QMessageBox::No);
         if (res != QMessageBox::Yes) {
@@ -1079,7 +1075,7 @@ void programmer::slotRemoveOtaApp() {
 
     // delete the hex file
     {
-        QString path = ota_apps.contains(version) ? ota_apps[version].path : QString();
+        QString path = jlib::has_key(ota_apps, version) ? ota_apps[version].path : QString();
         if (!path.isEmpty() && QFile::exists(path)) {
             QFile::remove(path);
         }
@@ -1088,14 +1084,14 @@ void programmer::slotRemoveOtaApp() {
     if (version == ota_latest_version) {
         ota_latest_version = 0;
         for (const auto& app : ota_apps) {
-            if (app.info.version > ota_latest_version) {
-                ota_latest_version = app.info.version;
+            if (app.second.info.version > ota_latest_version) {
+                ota_latest_version = app.second.info.version;
             }
         }
         updateOtaAppList();
     }
 
-    ota_apps.remove(version);
+    ota_apps.erase(version);
     saveOtaConfig(ota_conf_path);
 }
 
@@ -1163,17 +1159,17 @@ bool programmer::saveOtaConfig(const QString& path) {
     ota_conf_path = path;
 
     QSettings settings(path, QSettings::IniFormat);
-    settings.beginWriteArray("apps", ota_apps.count());
-    MYQDEBUG3 << "Saving" << ota_apps.count() << "apps";
+    settings.beginWriteArray("apps", ota_apps.size());
+    MYQDEBUG3 << "Saving" << ota_apps.size() << "apps";
     int i = 0;
     for (const auto& app : ota_apps) {
         settings.setArrayIndex(i++);
-        settings.setValue("path", app.path);
-        settings.setValue("version", app.info.version);
-        settings.setValue("timestamp", app.info.timestamp);
-        settings.setValue("size", app.info.size);
-        settings.setValue("crc", app.info.crc);
-        MYQDEBUG3 << "App" << version2String(app.info.version) << app.path << app.info.size << QString::number(app.info.crc, 16).toUpper();
+        settings.setValue("path", app.second.path);
+        settings.setValue("version", app.second.info.version);
+        settings.setValue("timestamp", app.second.info.timestamp);
+        settings.setValue("size", app.second.info.size);
+        settings.setValue("crc", app.second.info.crc);
+        MYQDEBUG3 << "App" << version2String(app.second.info.version) << app.second.path << app.second.info.size << QString::number(app.second.info.crc, 16).toUpper();
     }
     settings.endArray();
     settings.setValue("latest_version", ota_latest_version);
