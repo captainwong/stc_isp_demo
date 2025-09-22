@@ -516,9 +516,17 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
         }
 
         case APP2OTA_CMD_GET_LATEST_APP_INFO: {
-            latest_app_info_t info;
+            latest_app_info_t info{};
             get_latest_app_info_req_t* req = (get_latest_app_info_req_t*)pkt->pkt.dat;
-            //auto riter = ota_apps.();
+            for (auto riter = ota_apps.rbegin(); riter != ota_apps.rend(); riter++) {
+                if (riter->second.info.version > req->version) {
+                    info.status = OTA_OK;
+                    info.info = riter->second.info;
+                    serial->reply_latest_ota_app_info(info);
+                    return;
+                }
+            }
+            info.status = OTA_NO_NEW_VERSION;
             serial->reply_latest_ota_app_info(info);
             break;
         }
@@ -1016,7 +1024,7 @@ void programmer::slotAddOtaApp() {
 
     // check if version already exists
     if (jlib::has_key(ota_apps, meta->version)) {
-    // if (ota_apps.contains(meta->version)) {
+        // if (ota_apps.contains(meta->version)) {
         auto res = QMessageBox::question(this, tr("Confirm"), tr("An application with the same version already exists. Do you want to replace it?"),
                                          QMessageBox::Yes | QMessageBox::No);
         if (res != QMessageBox::Yes) {
