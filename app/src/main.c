@@ -10,6 +10,7 @@ system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
 uint16_t counter_1ms = 0;
 uint16_t counter_1s = 0;
 bool should_check_ota = false;
+app_info_t *papp = NULL;
 
 void isp_handle(void);
 
@@ -54,21 +55,18 @@ void main() {
         norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
     }
 
-    {
-        app_info_t *papp = NULL;
-        if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
-            papp = &ota_info.factory;
-        } else if (ota_info.current_app == FLASH_APP_ID_APP1) {
-            papp = &ota_info.app1;
-        } else {  // ota_info.current_app == FLASH_APP_ID_APP2
-            papp = &ota_info.app2;
-        }
-        debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", ota_info.current_app, papp->size, papp->crc);
-        debugf4("Version: %bu.%bu.%u",
-                version_major(papp->version),
-                version_minor(papp->version),
-                version_patch(papp->version));
+    if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
+        papp = &ota_info.factory;
+    } else if (ota_info.current_app == FLASH_APP_ID_APP1) {
+        papp = &ota_info.app1;
+    } else {  // ota_info.current_app == FLASH_APP_ID_APP2
+        papp = &ota_info.app2;
     }
+    debugf4("App%bu info: size=0x%08lX, crc=0x%08lX", ota_info.current_app, papp->size, papp->crc);
+    debugf4("Version: %bu.%bu.%u",
+            version_major(papp->version),
+            version_minor(papp->version),
+            version_patch(papp->version));
 
     while (1) {
         uart_run();
@@ -84,7 +82,7 @@ void main() {
 
         if (should_check_ota) {
             should_check_ota = false;
-            uart_send_check_ota();
+            uart_send_check_ota(papp);
         }
     }
 }

@@ -44,7 +44,6 @@ private slots:
     void slotSaveOtaConfig();
     void slotAddOtaApp();
     void slotRemoveOtaApp();
-    void slotSetOtaAppAsLatest();
 
     void program();
     void read_rom();
@@ -121,7 +120,6 @@ private:
         QPushButton* btnSaveConf{};
         QPushButton* btnAddApp{};
         QPushButton* btnRemoveApp{};
-        QPushButton* btnSetAppAsLatest{};
     } ota{};
 
     QByteArray e2{};

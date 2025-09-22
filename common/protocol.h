@@ -80,7 +80,7 @@ extern "C" {
 #define ISP_CMD_READ_LDR_VERSION 0xB7  // read bootloader version & build time
 #define ISP_CMD_READ_APP_VERSION 0xB8  // read application version & build time
 #define ISP_CMD_CALC_CRC32 0xB9        // calculate crc32 of given data
-// C* app <--> ota server
+// C* ota server <--> app
 #define OTA2APP_CMD_LATEST_APP_INFO 0xC0  // latest application info
 #define OTA2APP_CMD_APP_DATA 0xC1         // application data
 
@@ -187,16 +187,22 @@ void ldr_parse(ldr_pkt_parse_context_t* ctx, ldr_packet_t* rx, uint8_t b);
 
 uint8_t ldr_pkt_calc_sum(ldr_packet_t* pkt);
 
-////////////////////////////// ota related structures //////////////////////////////
+////////////////////////////// ota related stuff //////////////////////////////
 
-#define OTA_OK 0
-#define OTA_SERVER_ERROR 1
-#define OTA_UNKNOWN_VERSION 2
-#define OTA_OFFSET_OUT_OF_RANGE 3
+#define OTA_OK 0                   // success
+#define OTA_ERROR 1                // common error
+#define OTA_UNKNOWN_VERSION 2      // unknown version
+#define OTA_OFFSET_OUT_OF_RANGE 3  // offset out of range
+#define OTA_SERVER_ERROR 4         // server error
+#define OTA_NO_NEW_VERSION 5       // no new version
+#define OTA_INVALID_REQ 6          // invalid request
+
+// APP2OTA_CMD_LATEST_APP_INFO dat, little-endian
+typedef app_info_t get_latest_app_info_req_t;
 
 // OTA2APP_CMD_LATEST_APP_INFO dat, little-endian
 typedef struct {
-    uint8_t status;  // 0: success, 1: server error
+    uint8_t status;  // OTA_* status
     app_info_t info;
 } latest_app_info_t;
 
@@ -209,7 +215,7 @@ typedef struct {
 
 // OTA2APP_CMD_APP_DATA dat, little-endian
 typedef struct {
-    uint8_t status;   // 0: success, 2: unknown version, 3: offset out of range
+    uint8_t status;   // OTA_* status
     uint32_t offset;  // offset of the data
     uint32_t size;    // size of the data
     uint32_t crc;     // crc32 of the data

@@ -276,8 +276,6 @@ programmer::programmer(QWidget* parent)
     connect(ota.btnAddApp, &QPushButton::clicked, this, &programmer::slotAddOtaApp);
     ota.btnRemoveApp = new QPushButton(tr("Remove APP"), this);
     connect(ota.btnRemoveApp, &QPushButton::clicked, this, &programmer::slotRemoveOtaApp);
-    ota.btnSetAppAsLatest = new QPushButton(tr("Set APP as Latest"), this);
-    connect(ota.btnSetAppAsLatest, &QPushButton::clicked, this, &programmer::slotSetOtaAppAsLatest);
     {
         auto line1 = new QHBoxLayout();
         line1->addWidget(ota.lblConfPath);
@@ -288,7 +286,6 @@ programmer::programmer(QWidget* parent)
         auto line2 = new QHBoxLayout();
         line2->addWidget(ota.btnAddApp);
         line2->addWidget(ota.btnRemoveApp);
-        line2->addWidget(ota.btnSetAppAsLatest);
         line2->addStretch();
 
         auto otaLayout = new QVBoxLayout();
@@ -519,6 +516,7 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
 
         case APP2OTA_CMD_GET_LATEST_APP_INFO: {
             latest_app_info_t info;
+            get_latest_app_info_req_t* req = (get_latest_app_info_req_t*)pkt->pkt.dat;
             if (ota_latest_version && ota_apps.contains(ota_latest_version)) {
                 info.info = ota_apps[ota_latest_version].info;
                 // app_info_to_big_endian(info.info);
@@ -1077,7 +1075,6 @@ void programmer::slotRemoveOtaApp() {
         return;
     }
     uint32_t version = item->data(Qt::UserRole).toUInt();
-    ota_apps.remove(version);
     delete item;
 
     // delete the hex file
@@ -1098,17 +1095,7 @@ void programmer::slotRemoveOtaApp() {
         updateOtaAppList();
     }
 
-    saveOtaConfig(ota_conf_path);
-}
-
-void programmer::slotSetOtaAppAsLatest() {
-    auto item = ota.lstApps->currentItem();
-    if (!item) {
-        return;
-    }
-    uint32_t version = item->data(Qt::UserRole).toUInt();
-    ota_latest_version = version;
-    updateOtaAppList();
+    ota_apps.remove(version);
     saveOtaConfig(ota_conf_path);
 }
 
@@ -1177,6 +1164,7 @@ bool programmer::saveOtaConfig(const QString& path) {
 
     QSettings settings(path, QSettings::IniFormat);
     settings.beginWriteArray("apps", ota_apps.count());
+    MYQDEBUG3 << "Saving" << ota_apps.count() << "apps";
     int i = 0;
     for (const auto& app : ota_apps) {
         settings.setArrayIndex(i++);
@@ -1185,9 +1173,11 @@ bool programmer::saveOtaConfig(const QString& path) {
         settings.setValue("timestamp", app.info.timestamp);
         settings.setValue("size", app.info.size);
         settings.setValue("crc", app.info.crc);
+        MYQDEBUG3 << "App" << version2String(app.info.version) << app.path << app.info.size << QString::number(app.info.crc, 16).toUpper();
     }
     settings.endArray();
     settings.setValue("latest_version", ota_latest_version);
+    MYQDEBUG3 << "Latest version:" << version2String(ota_latest_version);
 
     return true;
 }

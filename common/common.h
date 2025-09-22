@@ -181,7 +181,7 @@ typedef struct {
     app_info_t app2;                 // ota application 2 info
 } ota_info_t;
 
-extern ota_info_t xdata ota_info;
+extern ota_info_t EMB_XDATA_MODIFIER ota_info;
 
 #if !defined(__C51__) || defined(VSCODE)
 #pragma pack()

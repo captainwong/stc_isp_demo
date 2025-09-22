@@ -198,8 +198,9 @@ void uart_debug(const char* fmt, ...) {
 }
 #endif /* DEBUG */
 
-void uart_send_check_ota(void) {
+void uart_send_check_ota(app_info_t* current) {
     tx.pkt.status = APP2OTA_CMD_GET_LATEST_APP_INFO;
-    tx.pkt.size = 0;
+    tx.pkt.size = sizeof(get_latest_app_info_req_t);
+    memcpy(tx.pkt.dat, current, tx.pkt.size);
     uart_send_tx();
 }
