@@ -45,14 +45,14 @@ void ota_init(void) {
 }
 
 void ota_1s_event(void) {
-    if (++ota_1s_counter == OTA_CHECK_INTERVAL) {
+    if (ota_state == OTA_STATE_IDLE && ++ota_1s_counter == OTA_CHECK_INTERVAL) {
         ota_1s_counter = 0;
-        if (ota_state == OTA_STATE_IDLE) {
-            ota_state = OTA_STATE_TIMEUP;
-        } else if (ota_state >= OTA_STATE_CHECKING && ota_timeout) {
-            if (--ota_timeout == 0) {
-                ota_state = OTA_STATE_TIMEOUT;
-            }
+        ota_state = OTA_STATE_TIMEUP;
+    }
+
+    if (ota_state >= OTA_STATE_CHECKING && ota_timeout) {
+        if (--ota_timeout == 0) {
+            ota_state = OTA_STATE_TIMEOUT;
         }
     }
 }
