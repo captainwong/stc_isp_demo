@@ -4,7 +4,11 @@
 #include <sys/sys.h>
 #include <sys/version.h>
 
+#include "timer.h"
 #include "uart.h"
+
+#define OTA_TIMEOUT_MAX 20  // seconds
+#define OTA_CHECK_INTERVAL 5 // seconds
 
 enum {
     OTA_STATE_IDLE,
@@ -15,40 +19,21 @@ enum {
 };
 
 system_context_t xdata sysctx __at(SYSTEM_CONTEXT_ADDR);
-uint16_t counter_1ms = 0;
-uint16_t counter_1s = 0;
 app_info_t *papp = NULL;
 uint8_t ota_state = OTA_STATE_IDLE;
+uint16_t ota_timeout = 0;
+uint16_t counter_1s = 0;
 
 void isp_handle(void);
-
-void t0_isr() INTERRUPT(TMR0_VECTOR) {
-    if (++counter_1ms == 1000) {
-        counter_1ms = 0;
-        led_run_toggle();
-
-        if (++counter_1s == 5) {  // 暂时每5秒检测一次有没有OTA更新
-            counter_1s = 0;
-            if (ota_state == OTA_STATE_IDLE) {
-                ota_state = OTA_STATE_TIMEUP;
-            }
-        }
-    }
-}
+void ota_run(void);
 
 void main() {
     enable_xsfr();
     gpio_init();
     pin_pu(3, 2);  // KEY_BOOT 上拉
 
-    t0_mode0_16bit_auto_reload();
-    t0_1t();
-    t0_as_timer();
-    t0_load(T1MS);
-    t0_enable_irq();
-    t0_run();
-
-    uart_init();
+    timer0_init();
+    uart1_init();
     enable_irq();
     led_run_on();
 
@@ -79,7 +64,7 @@ void main() {
             version_patch(papp->version));
 
     while (1) {
-        uart_run();
+        uart1_run();
         if (isp_parse_ok) {
             isp_parse_ok = false;
             isp_handle();
@@ -90,10 +75,25 @@ void main() {
             sys_reset();
         }
 
-        if (ota_state == OTA_STATE_TIMEUP) {
-            ota_state = OTA_STATE_CHECKING;
-            uart_send_check_ota(papp);
+        if (flag_1s) {
+            flag_1s = false;
+            led_run_toggle();
+
+            if (++counter_1s == 5) {  // 暂时每5秒检测一次有没有OTA更新
+                counter_1s = 0;
+                if (ota_state == OTA_STATE_IDLE) {
+                    ota_state = OTA_STATE_TIMEUP;
+                } else if (ota_state >= OTA_STATE_CHECKING) {
+                    if (ota_timeout > 0) {
+                        if (--ota_timeout == 0) {
+                            ota_state = OTA_STATE_TIMEOUT;
+                        }
+                    }
+                }
+            }
         }
+
+        ota_run();
     }
 }
 
@@ -151,5 +151,26 @@ void isp_handle(void) {
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;
             break;
     }
-    uart_send_tx();
+    uart1_send_tx();
+}
+
+void ota_run(void) {
+    switch (ota_state) {
+        case OTA_STATE_IDLE:
+            break;
+        case OTA_STATE_TIMEUP:
+            ota_state = OTA_STATE_CHECKING;
+            uart1_send_check_ota(papp);
+            ota_timeout = OTA_TIMEOUT_MAX;
+            break;
+        case OTA_STATE_TIMEOUT:
+            break;
+        case OTA_STATE_PREPARING:
+            break;
+        case OTA_STATE_CHECKING:
+            break;
+        default:
+            ota_state = OTA_STATE_IDLE;
+            break;
+    }
 }

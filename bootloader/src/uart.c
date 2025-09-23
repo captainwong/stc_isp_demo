@@ -196,7 +196,7 @@ void uart_run(void) {
 }
 
 #ifdef DEBUG
-void uart_debug(const char* fmt, ...) {
+void uart1_debug(const char* fmt, ...) {
     va_list args;
     tx.pkt.status = LDR_STATUS_LOG;
     tx.pkt.size = 0;

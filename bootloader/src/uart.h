@@ -15,15 +15,15 @@ void uart_wait_sent(void);
 void uart_run(void);
 
 #ifdef DEBUG
-void uart_debug(const char* fmt, ...);
+void uart1_debug(const char* fmt, ...);
 const char *unsafe_u8_to_bits(uint8_t v);
-#define debugf1(fmt) uart_debug(fmt)
-#define debugf2(fmt, _1) uart_debug(fmt, _1)
-#define debugf3(fmt, _1, _2) uart_debug(fmt, _1, _2)
-#define debugf4(fmt, _1, _2, _3) uart_debug(fmt, _1, _2, _3)
-#define debugf5(fmt, _1, _2, _3, _4) uart_debug(fmt, _1, _2, _3, _4)
-#define debugf6(fmt, _1, _2, _3, _4, _5) uart_debug(fmt, _1, _2, _3, _4, _5)
-#define debugf7(fmt, _1, _2, _3, _4, _5, _6) uart_debug(fmt, _1, _2, _3, _4, _5, _6)
+#define debugf1(fmt) uart1_debug(fmt)
+#define debugf2(fmt, _1) uart1_debug(fmt, _1)
+#define debugf3(fmt, _1, _2) uart1_debug(fmt, _1, _2)
+#define debugf4(fmt, _1, _2, _3) uart1_debug(fmt, _1, _2, _3)
+#define debugf5(fmt, _1, _2, _3, _4) uart1_debug(fmt, _1, _2, _3, _4)
+#define debugf6(fmt, _1, _2, _3, _4, _5) uart1_debug(fmt, _1, _2, _3, _4, _5)
+#define debugf7(fmt, _1, _2, _3, _4, _5, _6) uart1_debug(fmt, _1, _2, _3, _4, _5, _6)
 #else
 #define debugf1(fmt)
 #define debugf2(fmt, _1)

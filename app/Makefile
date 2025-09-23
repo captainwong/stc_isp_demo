@@ -40,7 +40,8 @@ C_SOURCES= \
 ../common/bsp/spi.c \
 ../common/bsp/norflash.c \
 src/main.c \
-src/uart.c
+src/uart.c \
+src/timer.c
 
 ASM_SOURCES= 
 

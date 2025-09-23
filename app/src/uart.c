@@ -20,7 +20,7 @@ static uint8_t xdata tx_buf[RB_SIZE];
 static ringbuf_t xdata rxrb, txrb;
 bit tx_busy = false;
 
-void uart_init(void) {
+void uart1_init(void) {
     ringbuf_init(rxrb, rx_buf, sizeof(rx_buf));
     ringbuf_init(txrb, tx_buf, sizeof(tx_buf));
     tx.pkt.head = LDR_PKT_HEAD;
@@ -69,14 +69,14 @@ void uart1_isr() INTERRUPT(UART1_VECTOR) {
     }
 }
 
-void uart_wait_sent(void) {
+void uart1_wait_sent(void) {
     volatile uint16_t data i = UART_WAIT_TIME;
     while (tx_busy && i--) {
         // wdt_feed();
     }
 }
 
-uint8_t uart_block_send(uint8_t dat) {
+uint8_t uart1_block_send(uint8_t dat) {
     uart1_disable_irq();
     TI = 0;
     SBUF = dat;
@@ -85,7 +85,7 @@ uint8_t uart_block_send(uint8_t dat) {
     return dat;
 }
 
-static void uart_send_raw(uint8_t* buf, uint8_t n) {
+static void uart1_send_raw(uint8_t* buf, uint8_t n) {
     volatile uint16_t data i = UART_WAIT_TIME;
     if (n > RB_SIZE) {
         return;
@@ -109,13 +109,13 @@ static void uart_send_raw(uint8_t* buf, uint8_t n) {
     ES = 1;
 }
 
-void uart_send_tx(void) {
+void uart1_send_tx(void) {
     ldr_pkt_end(&tx) = LDR_PKT_END;
     ldr_pkt_sum(&tx) = ldr_pkt_calc_sum(&tx);
-    uart_send_raw(tx.buf, ldr_pkt_len(&tx));
+    uart1_send_raw(tx.buf, ldr_pkt_len(&tx));
 }
 
-void uart_parse(uint8_t b) {
+void uart1_parse(uint8_t b) {
     switch (ctx.state) {
         case ISP_PARSE_STATE_IDLE:
         check_isp_pkt_head:
@@ -144,10 +144,10 @@ void uart_parse(uint8_t b) {
                 ctx.state = ISP_PARSE_STATE_CHECKSUM;
             } else {
 #ifdef DEBUG
-                uart_block_send(0xCC);
-                uart_block_send(b);
-                uart_block_send(ctx.len);
-                uart_block_send(rx.pkt.len);
+                uart1_block_send(0xCC);
+                uart1_block_send(b);
+                uart1_block_send(ctx.len);
+                uart1_block_send(rx.pkt.len);
 #endif
                 ctx.state = ISP_PARSE_STATE_IDLE;
                 goto check_isp_pkt_head;
@@ -159,10 +159,10 @@ void uart_parse(uint8_t b) {
                 isp_parse_ok = true;
             } else {
 #ifdef DEBUG
-                uart_block_send(0xDD);
-                uart_block_send(b);
-                uart_block_send(ctx.sum);
-                uart_block_send(-ctx.sum);
+                uart1_block_send(0xDD);
+                uart1_block_send(b);
+                uart1_block_send(ctx.sum);
+                uart1_block_send(-ctx.sum);
 #endif
                 ctx.state = ISP_PARSE_STATE_IDLE;
                 goto check_isp_pkt_head;
@@ -174,11 +174,11 @@ void uart_parse(uint8_t b) {
     }
 }
 
-void uart_run(void) {
+void uart1_run(void) {
     uint8_t data c, i;
     for (i = 0; i < 4 && ringbuf_readable(rxrb); i++) {
         ringbuf_read(rxrb, c);
-        uart_parse(c);
+        uart1_parse(c);
         if (isp_parse_ok) {
             return;
         }
@@ -186,21 +186,21 @@ void uart_run(void) {
 }
 
 #ifdef DEBUG
-void uart_debug(const char* fmt, ...) {
+void uart1_debug(const char* fmt, ...) {
     va_list args;
     tx.pkt.status = LDR_STATUS_LOG;
     tx.pkt.size = 0;
     va_start(args, fmt);
     tx.pkt.size = vsprintf(tx.pkt.dat, fmt, args);
     va_end(args);
-    uart_send_tx();
-    uart_wait_sent();
+    uart1_send_tx();
+    uart1_wait_sent();
 }
 #endif /* DEBUG */
 
-void uart_send_check_ota(app_info_t* current) {
+void uart1_send_check_ota(app_info_t* current) {
     tx.pkt.status = APP2OTA_CMD_GET_LATEST_APP_INFO;
     tx.pkt.size = sizeof(get_latest_app_info_req_t);
     memcpy(tx.pkt.dat, current, tx.pkt.size);
-    uart_send_tx();
+    uart1_send_tx();
 }
