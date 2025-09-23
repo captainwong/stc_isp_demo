@@ -15,10 +15,10 @@ enum {
     OTA_STATE_PREPARING,
 };
 
-app_info_t *papp = NULL;
-uint8_t ota_state = OTA_STATE_IDLE;
-uint16_t ota_timeout = 0;
-uint16_t ota_1s_counter = 0;
+static app_info_t *papp = NULL;
+static uint8_t ota_state = OTA_STATE_IDLE;
+static uint16_t ota_timeout = 0;
+static uint16_t ota_1s_counter = 0;
 
 void ota_init(void) {
     findout_which_ota_info_is_older();
@@ -65,14 +65,27 @@ void ota_on_latest_app_info(const latest_app_info_t *info) {
                 version_major(info->info.version),
                 version_minor(info->info.version),
                 version_patch(info->info.version));
-        if (info->result == OTA_OK) {
-            ota_timeout = OTA_TIMEOUT_MAX;
-            if (info->info.version > papp->version) {
-                ota_state = OTA_STATE_PREPARING;
-            } else {
+        switch (info->result) {
+            case OTA_OK:
+                ota_timeout = OTA_TIMEOUT_MAX;
+                if (info->info.version > papp->version) {
+                    debugf1("Newer app found, preparing to download...");
+                    ota_state = OTA_STATE_PREPARING;
+                } else {
+                    debugf1("No newer app");
+                    ota_state = OTA_STATE_IDLE;
+                }
+                break;
+
+            case OTA_NO_NEW_VERSION:
                 debugf1("No newer app");
+                ota_1s_counter = 0;
                 ota_state = OTA_STATE_IDLE;
-            }
+                break;
+
+            default:
+                // let OTA_STATE_TIMEOUT handle it
+                break;
         }
     }
 }
