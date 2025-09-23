@@ -165,6 +165,14 @@ typedef struct {
         (ctx).crc = 0;                         \
     } while (0)
 
+#define flash_app_download_ctx_to_little_endian(ctx) \
+    do {                                             \
+        (ctx).received = rev32((ctx).received);      \
+        (ctx).crc = rev32((ctx).crc);                \
+    } while (0)
+
+#define flash_app_download_ctx_to_big_endian(ctx) flash_app_download_ctx_to_little_endian(ctx)
+
 // ota info structure, stored in norflash, big endian
 // 68 bytes
 typedef struct {
@@ -180,6 +188,17 @@ typedef struct {
     app_info_t app1;                 // ota application 1 info
     app_info_t app2;                 // ota application 2 info
 } ota_info_t;
+
+#define ota_info_to_little_endian(info)                        \
+    do {                                                       \
+        (info).seq = rev32((info).seq);                        \
+        flash_app_download_ctx_to_little_endian((info).dlctx); \
+        app_info_to_little_endian((info).factory);             \
+        app_info_to_little_endian((info).app1);                \
+        app_info_to_little_endian((info).app2);                \
+    } while (0)
+
+#define ota_info_to_big_endian(info) ota_info_to_little_endian(info)
 
 extern ota_info_t EMB_XDATA_MODIFIER ota_info;
 
