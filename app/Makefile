@@ -21,7 +21,7 @@ GPIO_H:=${SYS_DIR}/gpio.h
 C51IOSH_DEFINES=
 C51IOSH="${LIBHB_DIR}/libstc/c51io/c51io.sh"
 
-INC_DIR=${LIBHB_DIR};${LIBHB_DIR}/libemb;${LIBHB_DIR}/libstc;src;../common
+INC_DIR=${LIBHB_DIR};${LIBHB_DIR}/libemb;${LIBHB_DIR}/libstc;${LIBHB_DIR}/libhbcheck;src;../common
 DEFINES=WHAT_EVER_YOU_WANT_TO_DEFINE_HERE
 ifeq ($(DEBUG), 1)
 DEFINES+=,DEBUG
@@ -35,6 +35,8 @@ ASFLAGS=SET (SMALL) DEBUG EP
 TARGET=APP
 
 C_SOURCES= \
+${LIBHB_DIR}/libemb/emb_bitrev.c \
+${LIBHB_DIR}/libhbcheck/hb_check.c \
 ../common/common.c \
 ../common/protocol.c \
 ../common/bsp/spi.c \

@@ -13,8 +13,9 @@ COMMON_H=${CURRENT_DIR}/../common/common.h
 BUILD_TIME_H=${CURRENT_DIR}/src/sys/build_time.h
 VERSION_H=${CURRENT_DIR}/src/sys/version.h
 
-CRC=${CURRENT_DIR}/../programmer/Release/crc.exe
+HEX2METABIN=${CURRENT_DIR}/../programmer/Release/hex2metabin.exe
 APP_HEX=${CURRENT_DIR}/output/APP.hex
+APP_BIN=${CURRENT_DIR}/output/app.bin
 META_BIN=${CURRENT_DIR}/output/meta.bin
 LDR_SIZE=$(grep -oP '#define LDR_SIZE \K[0x0-9A-F]+' ${COMMON_H})
 FACTORY_META_SIZE=$(grep -oP '#define FACTORY_META_SIZE \K[0x0-9A-F]+' ${COMMON_H})
@@ -90,6 +91,6 @@ fi
 
 
 # 4. calculate app meta info and write to meta.bin
-cmd="${CRC} -i ${APP_HEX} -l ${LDR_SIZE} -m ${FACTORY_META_SIZE} -f 0x00 -t ${BUILD_TIME_HEX} -v ${APP_VERSION_HEX} -M ${META_BIN}"
+cmd="${HEX2METABIN} -i ${APP_HEX} -l ${LDR_SIZE} -m ${FACTORY_META_SIZE} -f 0x00 -t ${BUILD_TIME_HEX} -v ${APP_VERSION_HEX} -M ${META_BIN} -b ${APP_BIN}"
 echo "Generating meta info binary with command: ${cmd}"
-${CRC} -i ${APP_HEX} -l ${LDR_SIZE} -m ${FACTORY_META_SIZE} -f 0x00 -t ${BUILD_TIME_HEX} -v ${APP_VERSION_HEX} -M ${META_BIN}
+${HEX2METABIN} -i ${APP_HEX} -l ${LDR_SIZE} -m ${FACTORY_META_SIZE} -f 0x00 -t ${BUILD_TIME_HEX} -v ${APP_VERSION_HEX} -M ${META_BIN} -b ${APP_BIN}

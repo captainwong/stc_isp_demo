@@ -58,6 +58,7 @@ public:
     void program_flash(uint32_t addr, const QByteArray& bin);
 
     void reply_latest_ota_app_info(const latest_app_info_t& info);
+    void reply_app_data(const get_app_data_res_t* res);
 
     void send_tx(isp_packet_t* tx);
 

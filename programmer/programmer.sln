@@ -7,7 +7,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "programmer", "programmer\pr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "serial_hijack", "serial_hijack\serial_hijack.vcxproj", "{8DDC229E-7007-481B-968A-28D8D9ECABCA}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "crc", "crc\crc.vcxproj", "{23CC0DBD-5D96-4232-B2C1-EF9BF23C39FF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hex2metabin", "hex2metabin\hex2metabin.vcxproj", "{23CC0DBD-5D96-4232-B2C1-EF9BF23C39FF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

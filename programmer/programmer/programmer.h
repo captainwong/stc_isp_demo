@@ -12,6 +12,13 @@
 class QHexDocument;
 class QHexView;
 class Serial;
+
+typedef struct {
+    app_info_t info;
+    QString path;
+    QByteArray bin;
+} ota_app_t;
+
 class programmer : public QDialog {
     Q_OBJECT
 
@@ -46,8 +53,10 @@ private slots:
     void slotAddOtaApp();
     void slotRemoveOtaApp();
 
+private:
     void program();
     void read_rom();
+    bool createOtaAppByMetaAndBin(const QString& metaPath, const QString& binPath, ota_app_t& app);
     bool loadOtaConfig(const QString& path);
     bool saveOtaConfig(const QString& path);
     void updateOtaAppList();
@@ -129,11 +138,7 @@ private:
     Serial* serial{};
     QMetaObject::Connection connSerialError{};
 
-    typedef struct {
-        app_info_t info;
-        QString path;
-    } ota_app_t;
-    std::map<uint32_t, ota_app_t> ota_apps{}; // version -> app
+    std::map<uint32_t, ota_app_t> ota_apps{};  // version -> app
     uint32_t ota_latest_version = 0;
     QString ota_conf_path{};
 };

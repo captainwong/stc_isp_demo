@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <jlib/jlib/util/std_util.h>
 #include <jlib/jlib/util/str_util.h>
 #include <libhbcheck/libhbcheck.h>
@@ -10,26 +12,10 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
-#include <fstream>
 #include <iostream>
 #include <list>
 
 namespace po = boost::program_options;
-
-// 定义允许的CRC算法
-const std::vector<std::string> allowed_formats = {"hb_sum", "crc8", "crc16", "crc32"};
-
-// 自定义验证函数（可选：自动转换为小写）
-void validate_format(const std::string& val) {
-    std::string normalized_val = boost::algorithm::to_lower_copy(val);  // 可选：转换为小写
-    auto it = std::find(allowed_formats.begin(), allowed_formats.end(), normalized_val);
-    if (it == allowed_formats.end()) {
-        throw po::validation_error(
-            po::validation_error::invalid_option_value,
-            "format",
-            val);
-    }
-}
 
 bool validate_hex_impl(const std::string& val) {
     if (val.size() > 2) {
@@ -89,15 +75,15 @@ void validate_version(const std::string& val) {
 }
 
 int main(int argc, char* argv[]) {
-    std::string input_file, sldr_size, smeta_size, sfill_value, sapp_build_timestamp, sapp_version, meta_path;
+    std::string input_file, sldr_size, smeta_size, sfill_value, sapp_build_timestamp, sapp_version, meta_path, bin_path;
     uint32_t ldr_size = 0, meta_size = 0, fill_value = 0, app_size = 0;
     uint32_t app_build_timestamp = 0;
     uint32_t app_version = 0;
     uint32_t ldr_meta_size = 0;
 
     po::options_description desc(
-        "Usage: crc -i input_file -l ldr_size -m meta_size -f fill_value -t app_build_timestamp -v app_version -M meta_bin_path\n"
-        "Example: crc -i input.hex -l 0x1000 0x200 -f 0x00 -t 0x68C7B8E7 -v 0x01000000 -M meta.bin\n");
+        "Usage: crc -i input_file -l ldr_size -m meta_size -f fill_value -t app_build_timestamp -v app_version -M meta_bin_path -b bin_path\n"
+        "Example: crc -i input.hex -l 0x1000 0x200 -f 0x00 -t 0x68C7B8E7 -v 0x01000000 -M meta.bin -b app.bin\n");
     auto init = desc.add_options();
     init = init("help,h", "Show usage");
     init = init("input,i", po::value<std::string>(&input_file), "Input file");
@@ -107,6 +93,7 @@ int main(int argc, char* argv[]) {
     init = init("app_build_timestamp,t", po::value<std::string>(&sapp_build_timestamp)->notifier(&validate_build_time), "Application build timestamp");
     init = init("app_version,v", po::value<std::string>(&sapp_version)->notifier(&validate_version), "Application version");
     init = init("meta_path,M", po::value<std::string>(&meta_path), "Output Meta Info Binary path");
+    init = init("bin_path,b", po::value<std::string>(&bin_path), "Output Application Binary path");
 
     try {
         po::variables_map vm;
@@ -167,23 +154,30 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    if (bin_path.empty()) {
+        std::cerr << "Application binary path is required." << std::endl;
+        return 1;
+    }
+
     // read hex file
     std::string file_content;
     std::vector<uint8_t> bin_data;
-    std::ifstream ifs(input_file, std::ios::binary);
-    if (!ifs) {
+    FILE* f = fopen(input_file.c_str(), "rb");
+    if (!f) {
         std::cerr << "Failed to open input file: " << input_file << std::endl;
         return 1;
     }
-    ifs.seekg(0, std::ios::end);
-    std::streamsize size = ifs.tellg();
-    ifs.seekg(0, std::ios::beg);
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
 
     file_content.resize((size_t)size);
-    if (!ifs.read(&file_content[0], size)) {
+    if (fread(&file_content[0], 1, size, f) != (size_t)size) {
         std::cerr << "Failed to read input file: " << input_file << std::endl;
         return 1;
     }
+    fclose(f);
 
     // parse hex file
     std::vector<hex80_record_t> records;
@@ -251,17 +245,31 @@ int main(int argc, char* argv[]) {
         meta.version = rev32(meta.version);
 
         // write to file
-        std::ofstream ofs(meta_path, std::ios::binary);
-        if (!ofs) {
+        f = fopen(meta_path.c_str(), "wb");
+        if (!f) {
             std::cerr << "Failed to open meta info binary file: " << meta_path << std::endl;
             return 1;
         }
-
-        if (!ofs.write((const char*)&meta, sizeof(meta))) {
+        if (fwrite(&meta, 1, sizeof(meta), f) != sizeof(meta)) {
             std::cerr << "Failed to write meta info binary file: " << meta_path << std::endl;
+            fclose(f);
             return 1;
         }
+        fclose(f);
     }
+
+    // save bin file
+    f = fopen(bin_path.c_str(), "wb");
+    if (!f) {
+        std::cerr << "Failed to open application binary file: " << bin_path << std::endl;
+        return 1;
+    }
+    if (fwrite(bin_data.data(), 1, bin_data.size(), f) != bin_data.size()) {
+        std::cerr << "Failed to write application binary file: " << bin_path << std::endl;
+        fclose(f);
+        return 1;
+    }
+    fclose(f);
 
     return 0;
 }

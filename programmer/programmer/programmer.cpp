@@ -531,6 +531,32 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
             break;
         }
 
+        case APP2OTA_CMD_GET_APP_DATA: {
+            uint8_t buf[PKT_MAX_LEN] = {0};
+            get_app_data_res_t* res = (get_app_data_res_t*)buf;
+            get_app_data_req_t* req = (get_app_data_req_t*)pkt->pkt.dat;
+            auto it = ota_apps.find(req->version);
+            if (it != ota_apps.end()) {
+                const auto& app = it->second;
+                if (req->offset + req->size <= app.info.size) {
+                    res->result = OTA_OK;
+                    res->offset = req->offset;
+                    res->size = req->size;
+                    auto bin = app.bin.mid(req->offset, req->size);
+                    res->crc = hb_crc32((const uint8_t*)bin.constData(), bin.size());
+                    // MYQDEBUG3 << bytes2string(bin);
+                    // MYQDEBUG3 << "CRC32:" << QString::number(res->crc, 16);
+                    memcpy(res->dat, bin.constData(), bin.size());
+                } else {
+                    res->result = OTA_OFFSET_OUT_OF_RANGE;
+                }
+            } else {
+                res->result = OTA_UNKNOWN_VERSION;
+            }
+            serial->reply_app_data(res);
+            break;
+        }
+
         default:
             break;
     }
@@ -943,7 +969,6 @@ void programmer::slotSaveOtaConfig() {
 }
 
 void programmer::slotAddOtaApp() {
-    const QString hexFormats = "Hex80 Files (*.hex);;All Files (*.*)";
     const QString binFormats = "Binary Files (*.bin);;All Files (*.*)";
     QString dir{};
 #ifdef _DEBUG
@@ -957,33 +982,12 @@ void programmer::slotAddOtaApp() {
 
     QString userapp, appmeta;
 #ifdef _DEBUG
-    userapp = dir + "/APP.hex";
+    userapp = dir + "/app.bin";
 #else
-    userapp = QFileDialog::getOpenFileName(this, tr("Open User Application Hex File"), dir, hexFormats);
+    userapp = QFileDialog::getOpenFileName(this, tr("Open User Application Bin File"), dir, binFormats);
 #endif
 
     if (userapp.isEmpty()) {
-        return;
-    }
-
-    QFile file2(userapp);
-    if (!file2.open(QIODevice::ReadOnly)) {
-        QMessageBox::warning(this, tr("Error"), tr("Failed to open user application hex file"));
-        return;
-    }
-    QByteArray dat2 = file2.readAll();
-    if (dat2.length() > E2_MAX_SIZE) {
-        QMessageBox::critical(this, tr("Error"), tr("ROM space exceeded 64KB"));
-        return;
-    }
-    std::vector<hex80_code_snippet_t> user_snippets;
-    if (!tryParseHex80File(dat2.toStdString(), user_snippets) ||
-        user_snippets.size() < 2 ||            // at least 2 snippets
-        user_snippets[0].addr != 0x0000 ||     // make sure first snippet starts at 0x0000
-        (user_snippets[0].dat.size() != 3) ||  // make sure first instruction is LJMP addr16
-        (user_snippets[0].dat[0] != 0x02) ||   // make sure first instruction is LJMP, and addr16 is bigger than ldr_meta_size + 3
-        ((user_snippets[0].dat[1] << 8) | (user_snippets[0].dat[2])) < 3) {
-        QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
         return;
     }
 
@@ -1005,25 +1009,14 @@ void programmer::slotAddOtaApp() {
     if (appmeta.isEmpty()) {
         return;
     }
-    QFile mfile(appmeta);
-    if (!mfile.open(QIODevice::ReadOnly)) {
-        QMessageBox::warning(this, tr("Error"), tr("Failed to open meta data bin file"));
-        return;
-    }
-    QByteArray mdat = mfile.readAll();
-    if (mdat.length() != sizeof(app_info_t)) {
-        QMessageBox::critical(this, tr("Error"), tr("Meta data bin file size is not %1 bytes").arg(sizeof(app_info_t)));
-        return;
-    }
 
-    app_info_t* meta = (app_info_t*)(mdat.constData());
-    app_info_to_little_endian(*meta);
-    ota_app_t app;
-    app.path = userapp;
-    app.info = *meta;
+    ota_app_t app{};
+    if (!createOtaAppByMetaAndBin(appmeta, userapp, app)) {
+        return;
+    }
 
     // check if version already exists
-    if (jlib::has_key(ota_apps, meta->version)) {
+    if (jlib::has_key(ota_apps, app.info.version)) {
         // if (ota_apps.contains(meta->version)) {
         auto res = QMessageBox::question(this, tr("Confirm"), tr("An application with the same version already exists. Do you want to replace it?"),
                                          QMessageBox::Yes | QMessageBox::No);
@@ -1032,7 +1025,7 @@ void programmer::slotAddOtaApp() {
         }
     }
 
-    // copy to my own dir
+    // copy bin to my own dir
     {
         QString folder;
         QDir d(jlib::qt::PathHelperLocalWithoutBin().program());
@@ -1041,28 +1034,30 @@ void programmer::slotAddOtaApp() {
             QDir().mkdir(folder);
         }
 
-        QString newpath = QString("%1/%2.hex").arg(folder).arg(version2String(app.info.version));
+        QString newpath = QString("%1/%2.bin").arg(folder).arg(version2String(app.info.version));
         // delete old one if exists
         if (QFile::exists(newpath)) {
             QFile::remove(newpath);
         }
-        // copy user app
+        // copy to new location
         if (!QFile::copy(userapp, newpath)) {
-            QMessageBox::warning(this, tr("Error"), tr("Failed to copy user application hex file to %1").arg(newpath));
+            QMessageBox::warning(this, tr("Error"), tr("Failed to copy application bin file to %1").arg(newpath));
             return;
         }
         app.path = newpath;
     }
 
-    ota_apps[meta->version] = app;
-    QString item_txt = QString("%1 | Time:%2 | Size:%3 | CRC:%4")
+    ota_apps[app.info.version] = app;
+    QString item_txt = QString("%1 | Time: 0x%2 %3 | Size: 0x%4 | CRC: 0x%5")
                            .arg(version2String(app.info.version))
+                           .arg(QString::number(app.info.timestamp, 16).toUpper())
                            .arg(QDateTime::fromSecsSinceEpoch(app.info.timestamp).toString("yyyy-MM-dd HH:mm:ss"))
-                           .arg(QString::number(app.info.size, 10))
+                           .arg(QString::number(app.info.size, 16).toUpper())
                            .arg(QString::number(app.info.crc, 16).toUpper());
     auto item = new QListWidgetItem();
     item->setData(Qt::UserRole, app.info.version);
     item->setText(item_txt);
+    item->setToolTip(app.path);
     ota.lstApps->addItem(item);
 
     if (ota_latest_version == 0 || app.info.version > ota_latest_version) {
@@ -1104,7 +1099,7 @@ void programmer::slotRemoveOtaApp() {
 }
 
 void programmer::program() {
-    auto bin = e2.mid(e2sent, 128);
+    auto bin = e2.mid(e2sent, PKT_DAT_MAX_LEN);
     MYQDEBUG3 << "Programming" << QString::number(e2sent, 16) << "size=" << bin.size();
     serial->program_bin((e2sent) & 0xFFFF, bin);
     e2sent += bin.size();
@@ -1115,10 +1110,53 @@ void programmer::read_rom() {
     uint16_t addr = leReadOffset->text().toUInt(nullptr, 16);
     size_t size = leReadLen->text().toUInt(nullptr, 16);
     size -= addr + e2recv;
-    if (size > 128) {
-        size = 128;
+    if (size > PKT_DAT_MAX_LEN) {
+        size = PKT_DAT_MAX_LEN;
     }
     serial->read_rom((uint16_t)(addr + e2recv), size & 0xFF);
+}
+
+bool programmer::createOtaAppByMetaAndBin(const QString& metaPath, const QString& binPath, ota_app_t& app) {
+    QFile bfile(binPath);
+    if (!bfile.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open user application bin file"));
+        return false;
+    }
+    QByteArray bdat = bfile.readAll();
+    if (bdat.length() > E2_MAX_SIZE) {
+        QMessageBox::critical(this, tr("Error"), tr("ROM space exceeded 64KB"));
+        return false;
+    }
+
+    QFile mfile(metaPath);
+    if (!mfile.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to open meta data bin file"));
+        return false;
+    }
+    QByteArray mdat = mfile.readAll();
+    if (mdat.length() != sizeof(app_info_t)) {
+        QMessageBox::critical(this, tr("Error"), tr("Meta data bin file size is not %1 bytes").arg(sizeof(app_info_t)));
+        return false;
+    }
+
+    app_info_t* meta = (app_info_t*)(mdat.constData());
+    app_info_to_little_endian(*meta);
+
+    if (meta->size != bdat.size()) {
+        QMessageBox::critical(this, tr("Error"), tr("Application size in meta data does not match the actual size"));
+        return false;
+    }
+
+    if (meta->crc != hb_crc32((const uint8_t*)bdat.constData(), bdat.size())) {
+        QMessageBox::critical(this, tr("Error"), tr("Application CRC32 in meta data does not match the actual CRC32"));
+        return false;
+    }
+
+    app.path = binPath;
+    app.info = *meta;
+    app.bin = bdat;
+
+    return true;
 }
 
 bool programmer::loadOtaConfig(const QString& path) {
@@ -1141,11 +1179,37 @@ bool programmer::loadOtaConfig(const QString& path) {
         app.info.timestamp = settings.value("timestamp").toUInt();
         app.info.size = settings.value("size").toUInt();
         app.info.crc = settings.value("crc").toUInt();
+
+        // validate the bin file
+        {
+            QFile bfile(app.path);
+            if (!bfile.open(QIODevice::ReadOnly)) {
+                MYQWARN3 << "Failed to open application bin file" << app.path;
+                continue;
+            }
+            QByteArray bdat = bfile.readAll();
+            if (bdat.length() != (int)app.info.size) {
+                MYQWARN3 << "Application bin file size does not match the meta data" << app.path;
+                continue;
+            }
+
+            uint32_t crc = hb_crc32((const uint8_t*)bdat.constData(), bdat.size());
+            if (crc != app.info.crc) {
+                MYQWARN3 << "Application bin file CRC32 does not match the meta data" << app.path;
+                continue;
+            }
+
+            app.bin = bdat;
+        }
+
+        // verify ok, add to the list
+        MYQDEBUG3 << "Loaded OTA app" << version2String(app.info.version) << app.path << app.info.size << QString::number(app.info.crc, 16).toUpper();
         ota_apps[app.info.version] = app;
-        QString item_txt = QString("%1 | Time:%2 | Size:%3 | CRC:%4")
+        QString item_txt = QString("%1 | Time: 0x%2 %3 | Size: 0x%4 | CRC: 0x%5")
                                .arg(version2String(app.info.version))
+                               .arg(QString::number(app.info.timestamp, 16).toUpper())
                                .arg(QDateTime::fromSecsSinceEpoch(app.info.timestamp).toString("yyyy-MM-dd HH:mm:ss"))
-                               .arg(QString::number(app.info.size, 10))
+                               .arg(QString::number(app.info.size, 16).toUpper())
                                .arg(QString::number(app.info.crc, 16).toUpper());
         auto item = new QListWidgetItem();
         item->setData(Qt::UserRole, app.info.version);

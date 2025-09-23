@@ -194,6 +194,18 @@ void Serial::reply_latest_ota_app_info(const latest_app_info_t& info) {
     send_tx(&tx);
 }
 
+void Serial::reply_app_data(const get_app_data_res_t* res) {
+    isp_packet_t tx = {0};
+    tx.pkt.head = ISP_PKT_HEAD;
+    tx.pkt.len = 6 + sizeof(get_app_data_res_t) - 1 + res->size;
+    tx.pkt.cmd = OTA2APP_CMD_APP_DATA;
+    tx.pkt.addr = 0;
+    tx.pkt.size = sizeof(get_app_data_res_t) - 1 + res->size;
+    memcpy(&tx.pkt.dat[0], res, sizeof(get_app_data_res_t) - 1 + res->size);
+    isp_pkt_end(&tx) = ISP_PKT_END;
+    send_tx(&tx);
+}
+
 void Serial::send_tx(isp_packet_t* tx) {
     isp_pkt_sum(tx) = isp_pkt_calc_sum(tx);
     auto dat = QByteArray((const char*)tx->buf, isp_pkt_len(tx));

@@ -189,8 +189,8 @@ void isp_handle(void) {
             break;
         case ISP_CMD_READ_W25Q:
             addr = rev32(*(uint32_t *)&rx.pkt.dat[0]);
-            if (rx.pkt.size > 128) {
-                rx.pkt.size = 128;  // limit max read size
+            if (rx.pkt.size > PKT_DAT_MAX_LEN) {
+                rx.pkt.size = PKT_DAT_MAX_LEN;  // limit max read size
             }
             *(uint32_t *)&tx.pkt.dat[0] = *(uint32_t *)&rx.pkt.dat[0];  // echo back addr
             norflash_read(addr, &tx.pkt.dat[4], rx.pkt.size);
@@ -199,8 +199,8 @@ void isp_handle(void) {
             break;
         case ISP_CMD_PROGRAM_W25Q:
             addr = rev32(*(uint32_t *)&rx.pkt.dat[0]);
-            if (rx.pkt.size > 128) {
-                rx.pkt.size = 128;  // limit max program size
+            if (rx.pkt.size > PKT_DAT_MAX_LEN) {
+                rx.pkt.size = PKT_DAT_MAX_LEN;  // limit max program size
             }
             norflash_write_no_check(addr, &rx.pkt.dat[4], rx.pkt.size);
             *(uint32_t *)&tx.pkt.dat[0] = *(uint32_t *)&rx.pkt.dat[0];  // echo back addr
@@ -375,7 +375,7 @@ void copy_onchip_factory_app_to_norflash(void) {
         while (1);
     }
     // 2.5 update otaid
-    sysctx.st.otaid = (sysctx.st.otaid == FLASH_OTA_ID_MASTER) ? FLASH_OTA_ID_BACKUP : FLASH_OTA_ID_MASTER;
+    sysctx.st.otaid = !sysctx.st.otaid;  // switch to the other ota info for next time
 
     /////////////////////////// 3. erase on-chip factory metadata ///////////////////////////
     debugf1("Erasing on-chip factory metadata...");
@@ -541,7 +541,7 @@ retry:
     if (ota_info.current_app > FLASH_APP_ID_MAX) {
         debugf1("No valid current_app");
         if (!retry_failed) {
-            sysctx.st.otaid = (sysctx.st.otaid == FLASH_OTA_ID_MASTER) ? FLASH_OTA_ID_BACKUP : FLASH_OTA_ID_MASTER;
+            sysctx.st.otaid = !sysctx.st.otaid;  // switch to the other ota info for retry
             retry_failed = true;
             goto retry;
         } else {
@@ -575,6 +575,7 @@ retry:
                     norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
                     norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
                 }
+                sysctx.st.otaid = !sysctx.st.otaid;  // switch to the other ota info for next time
             }
 
             return;

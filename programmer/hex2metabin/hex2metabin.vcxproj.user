@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>-i /h/mcu/c51/ISP/stc_iap_demo/app/output/APP.hex -l 0x2600 -m 0x200 -f 0x00 -t 0x68C7CBF5 -v 0x01000000 -M /h/mcu/c51/ISP/stc_iap_demo/app/output/meta.bin</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-i h:/mcu/c51/ISP/stc_iap_demo/app/output/APP.hex -l 0x3800 -m 0x200 -f 0x00 -t 0x68C7CBF5 -v 0x01000000 -M h:/mcu/c51/ISP/stc_iap_demo/app/output/meta.bin -b h:/mcu/c51/ISP/stc_iap_demo/app/output/app.bin</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

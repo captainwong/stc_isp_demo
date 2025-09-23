@@ -115,8 +115,8 @@ void flash::slotRead() {
     uint32_t offset = leOffset->text().toUInt(nullptr, 16);
     e2recv = leSize->text().toUInt(nullptr, 16);
     uint32_t size = e2recv;
-    if (size > 128) {  // read at most 128 bytes each time
-        size = 128;
+    if (size > PKT_DAT_MAX_LEN) {  // read at most PKT_DAT_MAX_LEN bytes each time
+        size = PKT_DAT_MAX_LEN;
     }
     serial->read_flash(offset, size);
     e2recvd = 0;
@@ -127,8 +127,8 @@ void flash::slotRead() {
 void flash::read_next_chunk() {
     uint32_t offset = leOffset->text().toUInt(nullptr, 16);
     uint32_t size = (e2recv - e2recvd);
-    if (size > 128) {  // read at most 128 bytes each time
-        size = 128;
+    if (size > PKT_DAT_MAX_LEN) {  // read at most PKT_DAT_MAX_LEN bytes each time
+        size = PKT_DAT_MAX_LEN;
     }
     serial->read_flash(offset, size);
 }
@@ -153,8 +153,8 @@ void flash::slotProgram() {
         return;
     }
     uint32_t size = e2send;
-    if (size > 128) {  // program at most 128 bytes each time
-        size = 128;
+    if (size > PKT_DAT_MAX_LEN) {  // program at most PKT_DAT_MAX_LEN bytes each time
+        size = PKT_DAT_MAX_LEN;
     }
     serial->program_flash(offset, e2.mid(offset, size));
     e2sent = 0;
@@ -165,8 +165,8 @@ void flash::slotProgram() {
 void flash::program_next_chunk() {
     uint32_t offset = leOffset->text().toUInt(nullptr, 16);
     uint32_t size = (e2send - e2sent);
-    if (size > 128) {  // program at most 128 bytes each time
-        size = 128;
+    if (size > PKT_DAT_MAX_LEN) {  // program at most PKT_DAT_MAX_LEN bytes each time
+        size = PKT_DAT_MAX_LEN;
     }
     serial->program_flash(offset + e2sent, e2.mid(offset + e2sent, size));
 }

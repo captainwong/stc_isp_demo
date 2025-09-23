@@ -57,6 +57,7 @@ extern "C" {
 #endif
 
 #define PKT_MAX_LEN 255
+#define PKT_DAT_MAX_LEN 128
 
 ////////////////////////////// programmer/ota-server packet //////////////////////////////
 
@@ -206,6 +207,31 @@ typedef enum {
     OTA_NO_NEW_VERSION = 5,       // no new version
     OTA_INVALID_REQ = 6           // invalid request
 } ota_result_t;
+
+#if defined(DEBUG) || defined(_DEBUG)
+static const char* ota_result_to_string(ota_result_t res) {
+    switch (res) {
+        case OTA_OK:
+            return "ok";
+        case OTA_ERROR:
+            return "error";
+        case OTA_UNKNOWN_VERSION:
+            return "unknown version";
+        case OTA_OFFSET_OUT_OF_RANGE:
+            return "offset out of range";
+        case OTA_SERVER_ERROR:
+            return "server error";
+        case OTA_NO_NEW_VERSION:
+            return "no new version";
+        case OTA_INVALID_REQ:
+            return "invalid request";
+        default:
+            return "UNKNOWN_OTA_RESULT";
+    }
+}
+#else
+#define ota_result_to_string(res) "UNKNOWN_OTA_RESULT"
+#endif
 
 // APP2OTA_CMD_LATEST_APP_INFO dat, little-endian
 typedef app_info_t get_latest_app_info_req_t;

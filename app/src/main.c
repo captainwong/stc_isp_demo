@@ -87,6 +87,15 @@ void isp_handle(void) {
                 ota_on_latest_app_info(info);
             }
             return;  // no need to reply
+        case OTA2APP_CMD_APP_DATA:
+            if (rx.pkt.size >= sizeof(get_app_data_res_t)) {
+                get_app_data_res_t *res = (get_app_data_res_t *)rx.pkt.dat;
+                res->offset = rev32(res->offset);
+                res->size = rev32(res->size);
+                res->crc = rev32(res->crc);
+                ota_on_app_data(res);
+            }
+            return;  // no need to reply
         default:
             tx.pkt.status = LDR_STATUS_UNKNOWN_CMD;
             break;

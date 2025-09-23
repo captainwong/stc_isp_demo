@@ -9,6 +9,7 @@
 void ota_init(void);
 void ota_1s_event(void);
 void ota_on_latest_app_info(const latest_app_info_t* info);
+void ota_on_app_data(const get_app_data_res_t* res);
 void ota_run(void);
 
 #endif /* __OTA_H__ */
