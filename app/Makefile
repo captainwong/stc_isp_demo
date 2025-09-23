@@ -41,7 +41,8 @@ C_SOURCES= \
 ../common/bsp/norflash.c \
 src/main.c \
 src/uart.c \
-src/timer.c
+src/timer.c \
+src/ota.c
 
 ASM_SOURCES= 
 

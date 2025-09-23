@@ -108,6 +108,7 @@
         "memory_resource": "cpp",
         "string_view": "cpp",
         "cfenv": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "norflash.h": "c"
     }
 }
