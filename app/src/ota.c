@@ -67,12 +67,13 @@ void ota_on_latest_app_info(const latest_app_info_t *info) {
                 version_patch(info->info.version));
         switch (info->result) {
             case OTA_OK:
-                ota_timeout = OTA_TIMEOUT_MAX;
                 if (info->info.version > papp->version) {
                     debugf1("Newer app found, preparing to download...");
+                    ota_timeout = OTA_TIMEOUT_MAX;
                     ota_state = OTA_STATE_PREPARING;
                 } else {
                     debugf1("No newer app");
+                    ota_1s_counter = 0;
                     ota_state = OTA_STATE_IDLE;
                 }
                 break;
@@ -109,6 +110,7 @@ void ota_run(void) {
         case OTA_STATE_CHECKING:
             break;
         default:
+            ota_1s_counter = 0;
             ota_timeout = OTA_TIMEOUT_MAX;
             ota_state = OTA_STATE_IDLE;
             break;
