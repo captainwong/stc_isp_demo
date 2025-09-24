@@ -217,6 +217,7 @@ void uart1_send_get_app_data(const get_app_data_req_t* req) {
     dat_req->offset = rev32(dat_req->offset);
     dat_req->size = rev32(dat_req->size);
     uart1_send_tx();
+#undef dat_req
 }
 
 void uart1_send_sysctx(void) {

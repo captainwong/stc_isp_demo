@@ -123,6 +123,7 @@ void ota_1s_event(void) {
         ota_state <= OTA_STATE_DOWNLOADING) {
         if (--ota_timeout == 0) {
             if (ota_state == OTA_STATE_DOWNLOADING) {
+                ota_timeout = OTA_TIMEOUT_MAX;
                 request_next_block();
             } else {
                 ota_state = OTA_STATE_TIMEOUT;
