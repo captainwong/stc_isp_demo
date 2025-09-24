@@ -566,7 +566,7 @@ retry:
             // update ota_info
             if (ota_info.current_app != boot[i]) {
                 debugf3("ota.current_app %bu != real app %bu, update ota info", ota_info.current_app, boot[i]);
-                ota_info.seq += 2;
+                ota_info.seq++;
                 ota_info.current_app = boot[i];
                 if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
                     norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);

@@ -96,7 +96,7 @@ void ota_init(void) {
         default:
             // abnormal state, reset to IDLE
             ota_info.dlctx.state = FLASH_APP_DL_STATE_IDLE;
-            ota_info.seq += 2;
+            ota_info.seq++;
             // write back to norflash
             if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
                 norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
@@ -205,7 +205,7 @@ void ota_on_app_data(const get_app_data_res_t *res) {
                     ota_state = OTA_STATE_APPLYING;
                     ota_timeout = OTA_TIMEOUT_MAX;
                     // update ota_info
-                    ota_info.seq += 2;
+                    ota_info.seq++;
                     ota_info.current_app = appid_to_upgrade;
                     ota_info.dlctx.state = FLASH_APP_DL_STATE_IDLE;
                     ota_info.dlctx.received = 0;
@@ -250,10 +250,10 @@ void ota_run(void) {
             debugf1("OTA check timeout");
             break;
         case OTA_STATE_PREPARING:
-            erase_size = flash_addr + (pappu->size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1); // 罪魁祸首，忘了+flash_addr
+            erase_size = flash_addr + (pappu->size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1);  // 罪魁祸首，忘了+flash_addr
             addr = flash_addr;
             debugf3("App size=0x%08lX, erase size=0x%08lX", pappu->size, erase_size);
-            ota_info.seq += 2;
+            ota_info.seq++;
             ota_info.dlctx.state = FLASH_APP_DL_STATE_ERASING;
             ota_info.dlctx.received = 0;
             ota_info.dlctx.crc = 0;
@@ -277,7 +277,7 @@ void ota_run(void) {
             } else {
                 debugf1("Erased.");
                 addr = flash_addr;
-                ota_info.seq += 2;
+                ota_info.seq++;
                 ota_info.dlctx.state = FLASH_APP_DL_STATE_DOWNLOADING;
                 ota_info.dlctx.received = 0;
                 ota_info.dlctx.crc = hb_crc32_slow_init();
