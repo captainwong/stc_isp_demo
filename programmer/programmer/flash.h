@@ -49,6 +49,8 @@ class flash : public QDialog {
 public:
     flash(QWidget* parent, Serial* pserial);
     ~flash();
+    
+    virtual void timerEvent(QTimerEvent* event) override;
 
 public slots:
     void slot_serial_parsed(const QByteArray& pkt);
@@ -102,4 +104,8 @@ private:
     size_t e2recvd = 0;  // how many bytes have been received
     QHexDocument* doc{};
     Serial* serial{};
+
+    bool readingMaster = true;
+    QElapsedTimer etimer{};
+    int timer_id_for_read_timeout = 0;
 };

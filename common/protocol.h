@@ -147,6 +147,7 @@ uint8_t isp_pkt_calc_sum(isp_packet_t* pkt);
 #define LDR_STATUS_LDR_VERSION 0x89
 #define LDR_STATUS_APP_VERSION 0x8A
 #define LDR_STATUS_CALC_CRC32_RES 0x8B
+#define LDR_STATUS_SYSCTX 0x8C  // system context info
 // C* app <--> ota server
 #define APP2OTA_CMD_GET_LATEST_APP_INFO 0xC0
 #define APP2OTA_CMD_GET_APP_DATA 0xC1

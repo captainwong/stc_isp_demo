@@ -5,6 +5,36 @@
 
 #include <QString>
 
+#include "../../common/protocol.h"
+
+#define qdebug_qbytes(origin)                               \
+    do {                                                    \
+        auto arr = origin;                                  \
+        char tmp[8];                                        \
+        QStringList sl;                                     \
+        for (int i = 0; i < arr.length(); i++) {            \
+            auto c = arr[i];                                \
+            snprintf(tmp, sizeof(tmp), "%02X", (uint8_t)c); \
+            sl.append(tmp);                                 \
+        }                                                   \
+        MYQDEBUG3 << arr.length() << sl.join(" ");           \
+    } while (0);
+
+inline QString bytes2string(const uint8_t* buf, size_t len) {
+    char tmp[8];
+    QStringList sl;
+    for (size_t i = 0; i < len; i++) {
+        uint8_t c = buf[i];
+        snprintf(tmp, sizeof(tmp), "%02X", (uint8_t)c);
+        sl.append(tmp);
+    }
+    return sl.join(" ");
+}
+
+inline QString bytes2string(const QByteArray& arr) {
+    return bytes2string((const uint8_t*)arr.constData(), arr.size());
+}
+
 inline QString version2String(uint32_t version) {
     return QString::number(version, 16).toUpper() + QString(" %1.%2.%3")
                                                         .arg((version >> 24) & 0xFF)
@@ -126,4 +156,65 @@ inline QString timestamp2String(uint32_t t) {
     } else {
         return QString("Invalid timestamp: ") + QString::number(t, 16).toUpper();
     }
+}
+
+inline QString flashAppDlStateToString(uint8_t state) {
+    switch (state) {
+        case FLASH_APP_DL_STATE_INVALID:
+            return QString::number(state, 16).toUpper() + " invalid";
+        case FLASH_APP_DL_STATE_IDLE:
+            return QString::number(state, 16).toUpper() + " idle";
+        case FLASH_APP_DL_STATE_ERASING:
+            return QString::number(state, 16).toUpper() + " erasing";
+        case FLASH_APP_DL_STATE_DOWNLOADING:
+            return QString::number(state, 16).toUpper() + " downloading";
+        case FLASH_APP_DL_STATE_VERIFYING:
+            return QString::number(state, 16).toUpper() + " verifying";
+        case FLASH_APP_DL_STATE_APPLYING:
+            return QString::number(state, 16).toUpper() + " applying";
+        default:
+            return QString::number(state, 16).toUpper() + QString(" UNKNOWN_FLASH_APP_DL_STATE");
+    }
+}
+
+/*
+typedef union {
+    uint8_t b;
+    struct {
+        uint8_t dfu : 1;                // whether to enter DFU mode
+        uint8_t ldr : 1;                // whether running in bootloader mode
+        uint8_t onchip_app_valid : 1;   // whether on-chip application is valid
+        uint8_t onchip_meta_valid : 1;  // whether on-chip factory metadata is valid
+        uint8_t appid : 2;              // current running application id, 0: factory, 1: app1, 2: app2
+        uint8_t otaid : 1;              // current old ota info id (which is ready to overwrite), 0: master, 1: backup
+        uint8_t resv : 1;               // reserved
+    } st;
+} system_context_t;
+*/
+inline QString sysctx2String(uint8_t b){
+    QString str;
+    system_context_t ctx;
+    ctx.b = b;
+    str += QString("DFU: ") + (ctx.st.dfu ? "Yes" : "No") + ", \n";
+    str += QString("Mode: ") + (ctx.st.ldr ? "Bootloader" : "Application") + ", \n";
+    str += QString("On-chip App Valid: ") + (ctx.st.onchip_app_valid ? "Yes" : "No") + ", \n";
+    str += QString("On-chip Meta Valid: ") + (ctx.st.onchip_meta_valid ? "Yes" : "No") + ", \n";
+    str += QString("App ID: ");
+    switch (ctx.st.appid) {
+        case 0:
+            str += "Factory";
+            break;
+        case 1:
+            str += "App1";
+            break;
+        case 2:
+            str += "App2";
+            break;
+        default:
+            str += "Unknown";
+            break;
+    }
+    str += ", \n";
+    str += QString("Ota ID: ") + (ctx.st.otaid ? "Backup" : "Master");
+    return str;
 }

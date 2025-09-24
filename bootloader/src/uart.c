@@ -106,7 +106,7 @@ static void uart_send_raw(uint8_t* buf, uint8_t n) {
     if (ringbuf_writable(txrb) < n) {
         return;
     }
-    ES = 0;
+    uart1_disable_irq();
     if (tx_busy || ringbuf_readable(txrb)) {
         ringbuf_write_n(txrb, buf, n);
     } else {
@@ -116,7 +116,7 @@ static void uart_send_raw(uint8_t* buf, uint8_t n) {
         tx_busy = true;
         SBUF = c;
     }
-    ES = 1;
+    uart1_enable_irq();
 }
 
 void uart_send_tx(void) {

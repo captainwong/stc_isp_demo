@@ -8,7 +8,7 @@
 #define RINGBUF_SIZE_TYPE uint16_t
 #include <libemb/ringbuf.h>
 
-#define RB_SIZE 256
+#define RB_SIZE 1024
 #define UART_WAIT_TIME 0x7FFF
 
 isp_pkt_parse_context_t ctx;
@@ -96,7 +96,7 @@ static void uart1_send_raw(uint8_t* buf, uint8_t n) {
     if (ringbuf_writable(txrb) < n) {
         return;
     }
-    ES = 0;
+    uart1_disable_irq();
     if (tx_busy || ringbuf_readable(txrb)) {
         ringbuf_write_n(txrb, buf, n);
     } else {
@@ -106,7 +106,7 @@ static void uart1_send_raw(uint8_t* buf, uint8_t n) {
         tx_busy = true;
         SBUF = c;
     }
-    ES = 1;
+    uart1_enable_irq();
 }
 
 void uart1_send_tx(void) {
@@ -216,5 +216,12 @@ void uart1_send_get_app_data(const get_app_data_req_t* req) {
     dat_req->version = rev32(dat_req->version);
     dat_req->offset = rev32(dat_req->offset);
     dat_req->size = rev32(dat_req->size);
+    uart1_send_tx();
+}
+
+void uart1_send_sysctx(void) {
+    tx.pkt.status = LDR_STATUS_SYSCTX;
+    tx.pkt.size = sizeof(sysctx);
+    tx.pkt.dat[0] = sysctx.b;
     uart1_send_tx();
 }

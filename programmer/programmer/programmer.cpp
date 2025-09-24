@@ -246,6 +246,16 @@ programmer::programmer(QWidget* parent)
     app.grp = new QGroupBox(tr("Application"), this);
     app.lblAppVersion = new QLabel(tr("Application Version:"), this);
     app.leAppVersion = new QLineEdit(this);
+    app.lblDfu = new QLabel(tr("DFU:"), this);
+    app.leDfu = new QLineEdit(this);
+    app.lblMode = new QLabel(tr("Mode:"), this);
+    app.leMode = new QLineEdit(this);
+    app.chkOnChipAppValid = new QCheckBox(tr("On-Chip APP Valid"), this);
+    app.chkOnChipMetaValid = new QCheckBox(tr("On-Chip META Valid"), this);
+    app.lblAppId = new QLabel(tr("App ID:"), this);
+    app.leAppId = new QLineEdit(this);
+    app.lblOtaId = new QLabel(tr("OTA ID:"), this);
+    app.leOtaId = new QLineEdit(this);
     app.btnReadVersion = new QPushButton(tr("Read Version"), this);
     connect(app.btnReadVersion, &QPushButton::clicked, this, &programmer::slotReadAppVersion);
     app.btnReadChipInfo = new QPushButton(tr("Read Chip Info"), this);
@@ -256,6 +266,28 @@ programmer::programmer(QWidget* parent)
         grid->addWidget(app.lblAppVersion, row, 0);
         grid->addWidget(app.leAppVersion, row, 1);
         row++;
+        grid->addWidget(app.lblDfu, row, 0);
+        grid->addWidget(app.leDfu, row, 1);
+        row++;
+        grid->addWidget(app.lblMode, row, 0);
+        grid->addWidget(app.leMode, row, 1);
+        row++;
+        // grid->addWidget(app.chkOnChipAppValid, row, 0);
+        // grid->addWidget(app.chkOnChipMetaValid, row, 1);
+        {
+            auto line = new QHBoxLayout();
+            line->addWidget(app.chkOnChipAppValid);
+            line->addWidget(app.chkOnChipMetaValid);
+            grid->addLayout(line, row, 0, 1, 2);
+        }
+        row++;
+        grid->addWidget(app.lblAppId, row, 0);
+        grid->addWidget(app.leAppId, row, 1);
+        row++;
+        grid->addWidget(app.lblOtaId, row, 0);
+        grid->addWidget(app.leOtaId, row, 1);
+        row++;
+
         auto line = new QHBoxLayout();
         line->addWidget(app.btnReadVersion);
         line->addWidget(app.btnReadChipInfo);
@@ -277,6 +309,8 @@ programmer::programmer(QWidget* parent)
     connect(ota.btnAddApp, &QPushButton::clicked, this, &programmer::slotAddOtaApp);
     ota.btnRemoveApp = new QPushButton(tr("Remove APP"), this);
     connect(ota.btnRemoveApp, &QPushButton::clicked, this, &programmer::slotRemoveOtaApp);
+    ota.chkSuspendServer = new QCheckBox(tr("Suspend Server"), this);
+    connect(ota.chkSuspendServer, &QCheckBox::stateChanged, this, &programmer::slotSuspendOtaServer);
     {
         auto line1 = new QHBoxLayout();
         line1->addWidget(ota.lblConfPath);
@@ -287,6 +321,7 @@ programmer::programmer(QWidget* parent)
         auto line2 = new QHBoxLayout();
         line2->addWidget(ota.btnAddApp);
         line2->addWidget(ota.btnRemoveApp);
+        line2->addWidget(ota.chkSuspendServer);
         line2->addStretch();
 
         auto otaLayout = new QVBoxLayout();
@@ -335,6 +370,10 @@ programmer::programmer(QWidget* parent)
 }
 
 programmer::~programmer() {}
+
+void programmer::timerEvent(QTimerEvent* event)
+{
+}
 
 void programmer::slotRefresh() {
     cmbPort->clear();
@@ -517,16 +556,20 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
 
         case APP2OTA_CMD_GET_LATEST_APP_INFO: {
             latest_app_info_t info{};
-            get_latest_app_info_req_t* req = (get_latest_app_info_req_t*)pkt->pkt.dat;
-            for (auto riter = ota_apps.rbegin(); riter != ota_apps.rend(); riter++) {
-                if (riter->second.info.version > req->version) {
-                    info.result = OTA_OK;
-                    info.info = riter->second.info;
-                    serial->reply_latest_ota_app_info(info);
-                    return;
+            if (ota.chkSuspendServer->isChecked()) {
+                info.result = OTA_NO_NEW_VERSION;
+            } else {
+                get_latest_app_info_req_t* req = (get_latest_app_info_req_t*)pkt->pkt.dat;
+                for (auto riter = ota_apps.rbegin(); riter != ota_apps.rend(); riter++) {
+                    if (riter->second.info.version > req->version) {
+                        info.result = OTA_OK;
+                        info.info = riter->second.info;
+                        serial->reply_latest_ota_app_info(info);
+                        return;
+                    }
                 }
+                info.result = OTA_NO_NEW_VERSION;
             }
-            info.result = OTA_NO_NEW_VERSION;
             serial->reply_latest_ota_app_info(info);
             break;
         }
@@ -534,30 +577,63 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
         case APP2OTA_CMD_GET_APP_DATA: {
             uint8_t buf[PKT_MAX_LEN] = {0};
             get_app_data_res_t* res = (get_app_data_res_t*)buf;
-            get_app_data_req_t* req = (get_app_data_req_t*)pkt->pkt.dat;
-            auto it = ota_apps.find(req->version);
-            if (it != ota_apps.end()) {
-                const auto& app = it->second;
-                if (req->offset + req->size <= app.info.size) {
-                    res->result = OTA_OK;
-                    res->offset = req->offset;
-                    res->size = req->size;
-                    auto bin = app.bin.mid(req->offset, req->size);
-                    res->crc = hb_crc32((const uint8_t*)bin.constData(), bin.size());
-                    // MYQDEBUG3 << bytes2string(bin);
-                    // MYQDEBUG3 << "CRC32:" << QString::number(res->crc, 16);
-                    memcpy(res->dat, bin.constData(), bin.size());
-                } else {
-                    res->result = OTA_OFFSET_OUT_OF_RANGE;
-                }
+            if (ota.chkSuspendServer->isChecked()) {
+                res->result = OTA_SERVER_ERROR;
             } else {
-                res->result = OTA_UNKNOWN_VERSION;
+                get_app_data_req_t* req = (get_app_data_req_t*)pkt->pkt.dat;
+                auto it = ota_apps.find(req->version);
+                if (it != ota_apps.end()) {
+                    const auto& app = it->second;
+                    if (req->offset + req->size <= app.info.size) {
+                        res->result = OTA_OK;
+                        res->offset = req->offset;
+                        res->size = req->size;
+                        auto bin = app.bin.mid(req->offset, req->size);
+                        res->crc = hb_crc32((const uint8_t*)bin.constData(), bin.size());
+                        // MYQDEBUG3 << bytes2string(bin);
+                        // MYQDEBUG3 << "CRC32:" << QString::number(res->crc, 16);
+                        memcpy(res->dat, bin.constData(), bin.size());
+                    } else {
+                        res->result = OTA_OFFSET_OUT_OF_RANGE;
+                    }
+                } else {
+                    res->result = OTA_UNKNOWN_VERSION;
+                }
             }
             serial->reply_app_data(res);
             break;
         }
 
+        case LDR_STATUS_SYSCTX: {
+            // MYQDEBUG3_NOQUOTE << "System Context:\n" + sysctx2String(pkt->pkt.dat[0]) + "\n";
+            system_context_t ctx;
+            ctx.b = pkt->pkt.dat[0];
+            app.leDfu->setText(ctx.st.dfu ? "Yes" : "No");
+            app.leMode->setText(ctx.st.ldr ? "Bootloader" : "Application");
+            app.chkOnChipAppValid->setChecked(ctx.st.onchip_app_valid);
+            app.chkOnChipMetaValid->setChecked(ctx.st.onchip_meta_valid);
+            QString appid;
+            switch (ctx.st.appid) {
+                case 0:
+                    appid = "Factory";
+                    break;
+                case 1:
+                    appid = "App1";
+                    break;
+                case 2:
+                    appid = "App2";
+                    break;
+                default:
+                    appid = "Unknown";
+                    break;
+            }
+            app.leAppId->setText(appid);
+            app.leOtaId->setText(ctx.st.otaid ? "Master" : "Backup");
+            break;
+        }
+
         default:
+            // MYQCRITICAL3_NOQUOTE << "programmer: Unknown packet status: " + QString::number(pkt->pkt.status, 16).toUpper();
             break;
     }
 }
@@ -1096,6 +1172,10 @@ void programmer::slotRemoveOtaApp() {
 
     ota_apps.erase(version);
     saveOtaConfig(ota_conf_path);
+}
+
+void programmer::slotSuspendOtaServer(int checked) {
+    // ota.chkSuspendServer->setText(checked ? tr("Resume OTA Server") : tr("Suspend OTA Server"));
 }
 
 void programmer::program() {

@@ -1,15 +1,16 @@
 #include "flash.h"
 
 #include <jlib/jlib/qt/QtDebug.h>
+#include <libhbcheck/libhbcheck.h>
 
 #include "QHexView/model/buffer/qmemorybuffer.h"
 #include "QHexView/qhexview.h"
 #include "Serial.h"
+#include "programmer.h"
 #include "stcutil.h"
 
 void flash::createOtaGroup(OtaInfoGroupWidget* wdt, const QString& title) {
     wdt->grp = new QGroupBox(title, this);
-    wdt->grp = new QGroupBox(tr("Master OTA info"), this);
     wdt->lblSeq = new QLabel(tr("Sequence:"), wdt->grp);
     wdt->leSeq = new QLineEdit(wdt->grp);
     wdt->lblCurrentApp = new QLabel(tr("Current App ID:"), wdt->grp);
@@ -214,9 +215,16 @@ flash::flash(QWidget* parent, Serial* pserial) : QDialog(parent), serial(pserial
     //////////////////////////////////// master ////////////////////////////////////
     createOtaGroup(&master, tr("Master OTA info"));
     connect(master.btnRead, &QPushButton::clicked, this, &flash::slotReadMasterOtaInfo);
+    connect(master.btnReadFactroyAndCalcCrc32, &QPushButton::clicked, this, &flash::slotReadFactoryAndCalcCrc32ByMaster);
+    connect(master.btnReadApp1AndCalcCrc32, &QPushButton::clicked, this, &flash::slotReadApp1AndCalcCrc32ByMaster);
+    connect(master.btnReadApp2AndCalcCrc32, &QPushButton::clicked, this, &flash::slotReadApp2AndCalcCrc32ByMaster);
+
     //////////////////////////////////// backup ////////////////////////////////////
     createOtaGroup(&backup, tr("Backup OTA info"));
     connect(backup.btnRead, &QPushButton::clicked, this, &flash::slotReadBackupOtaInfo);
+    connect(backup.btnReadFactroyAndCalcCrc32, &QPushButton::clicked, this, &flash::slotReadFactoryAndCalcCrc32ByBackup);
+    connect(backup.btnReadApp1AndCalcCrc32, &QPushButton::clicked, this, &flash::slotReadApp1AndCalcCrc32ByBackup);
+    connect(backup.btnReadApp2AndCalcCrc32, &QPushButton::clicked, this, &flash::slotReadApp2AndCalcCrc32ByBackup);
 
     auto mainLayout = new QHBoxLayout();
     mainLayout->addWidget(grpE2);
@@ -230,6 +238,20 @@ flash::flash(QWidget* parent, Serial* pserial) : QDialog(parent), serial(pserial
 }
 
 flash::~flash() {
+    if (timer_id_for_read_timeout) {
+        killTimer(timer_id_for_read_timeout);
+        timer_id_for_read_timeout = 0;
+    }
+}
+
+void flash::timerEvent(QTimerEvent* event) {
+    if (event->timerId() == timer_id_for_read_timeout) {
+        if (etimer.elapsed() > 3000) {
+            MYQWARN3_NOQUOTE << "Flash read timeout, re-reading...";
+            etimer.restart();
+            read_next_chunk();
+        }
+    }
 }
 
 void flash::slotReadFlashSize() {
@@ -256,10 +278,13 @@ void flash::slotRead() {
     e2recvd = 0;
     pb->setRange(0, e2recv);
     pb->setValue(0);
+    timer_id_for_read_timeout = startTimer(100);  // 每100ms检查一次是否超时
+    etimer.start();
 }
 
 void flash::read_next_chunk() {
     uint32_t offset = basic.leOffset->text().toUInt(nullptr, 16);
+    offset += e2recvd;
     uint32_t size = (e2recv - e2recvd);
     if (size > PKT_DAT_MAX_LEN) {  // read at most PKT_DAT_MAX_LEN bytes each time
         size = PKT_DAT_MAX_LEN;
@@ -309,21 +334,75 @@ void flash::slotReadBackupOtaInfo() {
 }
 
 void flash::slotReadFactoryAndCalcCrc32ByMaster() {
+    ota_info_t info;
+    info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_MASTER_ADDR);
+    ota_info_to_little_endian(info);
+    uint32_t app_addr = NORFLASH_FACTORY_APP_ADDR;
+    uint32_t app_size = info.factory.size;
+    basic.leOffset->setText(QString::number(app_addr, 16));
+    basic.leSize->setText(QString::number(app_size, 16));
+    slotRead();
+    readingMaster = true;
 }
 
 void flash::slotReadApp1AndCalcCrc32ByMaster() {
+    ota_info_t info;
+    info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_MASTER_ADDR);
+    ota_info_to_little_endian(info);
+    uint32_t app_addr = NORFLASH_APP1_ADDR;
+    uint32_t app_size = info.app1.size;
+    basic.leOffset->setText(QString::number(app_addr, 16));
+    basic.leSize->setText(QString::number(app_size, 16));
+    slotRead();
+    readingMaster = true;
 }
 
 void flash::slotReadApp2AndCalcCrc32ByMaster() {
+    ota_info_t info;
+    info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_MASTER_ADDR);
+    ota_info_to_little_endian(info);
+    uint32_t app_addr = NORFLASH_APP2_ADDR;
+    uint32_t app_size = info.app2.size;
+    basic.leOffset->setText(QString::number(app_addr, 16));
+    basic.leSize->setText(QString::number(app_size, 16));
+    slotRead();
+    readingMaster = true;
 }
 
 void flash::slotReadFactoryAndCalcCrc32ByBackup() {
+    ota_info_t info;
+    info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_BACKUP_ADDR);
+    ota_info_to_little_endian(info);
+    uint32_t app_addr = NORFLASH_FACTORY_APP_ADDR;
+    uint32_t app_size = info.factory.size;
+    basic.leOffset->setText(QString::number(app_addr, 16));
+    basic.leSize->setText(QString::number(app_size, 16));
+    slotRead();
+    readingMaster = false;
 }
 
 void flash::slotReadApp1AndCalcCrc32ByBackup() {
+    ota_info_t info;
+    info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_BACKUP_ADDR);
+    ota_info_to_little_endian(info);
+    uint32_t app_addr = NORFLASH_APP1_ADDR;
+    uint32_t app_size = info.app1.size;
+    basic.leOffset->setText(QString::number(app_addr, 16));
+    basic.leSize->setText(QString::number(app_size, 16));
+    slotRead();
+    readingMaster = false;
 }
 
 void flash::slotReadApp2AndCalcCrc32ByBackup() {
+    ota_info_t info;
+    info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_BACKUP_ADDR);
+    ota_info_to_little_endian(info);
+    uint32_t app_addr = NORFLASH_APP2_ADDR;
+    uint32_t app_size = info.app2.size;
+    basic.leOffset->setText(QString::number(app_addr, 16));
+    basic.leSize->setText(QString::number(app_size, 16));
+    slotRead();
+    readingMaster = false;
 }
 
 void flash::program_next_chunk() {
@@ -361,6 +440,7 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
         }
 
         case LDR_STATUS_W25Q_DATA: {
+            etimer.restart();
             uint32_t addr = *(uint32_t*)&pkt->pkt.dat[0];
             uint8_t size = pkt->pkt.size - 4;  // first 4 bytes are address
             if ((size_t)addr + size > (size_t)e2.size()) {
@@ -376,12 +456,16 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
                 read_next_chunk();
             } else {
                 MYQDEBUG3_NOQUOTE << "Flash read OK";
-                uint32_t offset = basic.leOffset->text().toUInt(nullptr, 16);
-                uint32_t size = basic.leSize->text().toUInt(nullptr, 16);
-                OtaInfoGroupWidget* wdt = nullptr;
+                if (timer_id_for_read_timeout) {
+                    killTimer(timer_id_for_read_timeout);
+                    timer_id_for_read_timeout = 0;
+                }
+                uint64_t offset = basic.leOffset->text().toUInt(nullptr, 16);
+                uint64_t size = basic.leSize->text().toUInt(nullptr, 16);
 
                 if (size == sizeof(ota_info_t)) {
                     ota_info_t info;
+                    OtaInfoGroupWidget* wdt = nullptr;
                     if (offset == NORFLASH_OTA_MASTER_ADDR) {
                         wdt = &master;
                         info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_MASTER_ADDR);
@@ -394,7 +478,7 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
                     if (wdt) {
                         wdt->leSeq->setText(QString::number(info.seq));
                         wdt->leCurrentApp->setText(QString::number(info.current_app));
-                        wdt->leDlState->setText(QString::number(info.dlctx.state));
+                        wdt->leDlState->setText(flashAppDlStateToString(info.dlctx.state));
                         wdt->leDlAppID->setText(QString::number(info.dlctx.appid));
                         wdt->leDlReceived->setText(QString::number(info.dlctx.received));
                         wdt->leDlCRC->setText(QString::number(info.dlctx.crc, 16).toUpper());
@@ -410,6 +494,63 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
                         wdt->app2.leCRC->setText(QString::number(info.app2.crc, 16).toUpper());
                         wdt->app2.leTimestamp->setText(timestamp2String(info.app2.timestamp));
                         wdt->app2.leVersion->setText(version2String(info.app2.version));
+                    }
+                } else if (offset == NORFLASH_FACTORY_APP_ADDR || offset == NORFLASH_APP1_ADDR || offset == NORFLASH_APP2_ADDR) {
+                    ota_info_t info;
+                    if (readingMaster)
+                        info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_MASTER_ADDR);
+                    else
+                        info = *(ota_info_t*)(e2.constData() + NORFLASH_OTA_BACKUP_ADDR);
+                    ota_info_to_little_endian(info);
+                    app_info_t* papp = nullptr;
+                    if (offset == NORFLASH_FACTORY_APP_ADDR) {
+                        papp = &info.factory;
+                    } else if (offset == NORFLASH_APP1_ADDR) {
+                        papp = &info.app1;
+                    } else if (offset == NORFLASH_APP2_ADDR) {
+                        papp = &info.app2;
+                    }
+
+                    if ((uint64_t)e2.size() >= offset + papp->size) {
+                        uint32_t crc = hb_crc32((const uint8_t*)e2.constData() + offset, papp->size);
+                        if (crc == papp->crc) {
+                            MYQDEBUG3_NOQUOTE << "Application CRC32 check OK: " + QString::number(crc, 16).toUpper();
+                        } else {
+                            MYQCRITICAL3_NOQUOTE << "Application CRC32 check FAILED! Calculated: " + QString::number(crc, 16).toUpper() + ", Expected: " + QString::number(papp->crc, 16).toUpper();
+                        }
+
+                        auto prog = (qobject_cast<programmer*>(parent()));
+                        auto iter = prog->ota_apps.find(papp->version);
+                        if (iter != prog->ota_apps.end()) {
+                            const auto& app = iter->second;
+                            if (app.info.size == papp->size && app.info.crc == papp->crc) {
+                                MYQDEBUG3_NOQUOTE << "Application matches local file: " + app.path;
+                                auto bin = e2.mid(offset, papp->size);
+                                if (bin != app.bin) {
+                                    MYQWARN3_NOQUOTE << "Application binary data does not match local file: " + app.path;
+                                    if (bin.size() == app.bin.size()) {
+                                        QStringList diffs;
+                                        int maxdiffs = 10;
+                                        for (int i = 0; i < bin.size(); i++) {
+                                            if (bin[i] != app.bin[i]) {
+                                                char buf[128];
+                                                snprintf(buf, sizeof(buf), "%04X: local: %02X, app: %02X\n", i, (unsigned char)app.bin[i], (unsigned char)bin[i]);
+                                                diffs.append(buf);
+                                                if (--maxdiffs == 0) {
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        MYQDEBUG3_NOQUOTE << diffs.join("\n");
+                                    }
+                                }
+                            } else {
+                                MYQWARN3_NOQUOTE << "Application does not match local file: " + app.path;
+                            }
+
+                        } else {
+                            MYQWARN3_NOQUOTE << "No local file matches application version: " + version2String(papp->version);
+                        }
                     }
                 }
             }
@@ -439,5 +580,9 @@ void flash::slot_serial_parsed(const QByteArray& buf) {
             }
             break;
         }
+
+        default:
+            // MYQCRITICAL3_NOQUOTE << "flash: Unknown packet status: " + QString::number(pkt->pkt.status, 16).toUpper();
+            break;
     }
 }

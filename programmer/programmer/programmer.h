@@ -26,6 +26,8 @@ public:
     programmer(QWidget* parent = nullptr);
     ~programmer();
 
+    virtual void timerEvent(QTimerEvent* event) override;
+
 private slots:
     void slotRefresh();
     void slotConnect();
@@ -52,6 +54,7 @@ private slots:
     void slotSaveOtaConfig();
     void slotAddOtaApp();
     void slotRemoveOtaApp();
+    void slotSuspendOtaServer(int checked);
 
 private:
     void program();
@@ -115,6 +118,16 @@ private:
         QGroupBox* grp{};
         QLabel* lblAppVersion{};
         QLineEdit* leAppVersion{};
+        QLabel* lblDfu{};
+        QLineEdit* leDfu{};
+        QLabel* lblMode{};
+        QLineEdit* leMode{};
+        QCheckBox* chkOnChipAppValid{};
+        QCheckBox* chkOnChipMetaValid{};
+        QLabel* lblAppId{};
+        QLineEdit* leAppId{};
+        QLabel* lblOtaId{};
+        QLineEdit* leOtaId{};
         QPushButton* btnReadVersion{};
         QPushButton* btnReadChipInfo{};
 
@@ -130,6 +143,7 @@ private:
         QPushButton* btnSaveConf{};
         QPushButton* btnAddApp{};
         QPushButton* btnRemoveApp{};
+        QCheckBox* chkSuspendServer{};
     } ota{};
 
     QByteArray e2{};
@@ -141,4 +155,6 @@ private:
     std::map<uint32_t, ota_app_t> ota_apps{};  // version -> app
     uint32_t ota_latest_version = 0;
     QString ota_conf_path{};
+
+    friend class flash;
 };

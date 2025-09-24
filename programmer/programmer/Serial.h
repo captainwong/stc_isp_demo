@@ -1,38 +1,11 @@
 #pragma once
 
-#include <QList>
-#include <QSerialPort>
 #include <stdio.h>
 
-#include "../../common/protocol.h"
+#include <QList>
+#include <QSerialPort>
 
-#define qdebug_qbytes(origin)                               \
-    do {                                                    \
-        auto arr = origin;                                  \
-        char tmp[8];                                        \
-        QStringList sl;                                     \
-        for (int i = 0; i < arr.length(); i++) {            \
-            auto c = arr[i];                                \
-            snprintf(tmp, sizeof(tmp), "%02X", (uint8_t)c); \
-            sl.append(tmp);                                 \
-        }                                                   \
-        MYQDEBUG3 << arr.length() << sl.join(" ");           \
-    } while (0);
-
-inline QString bytes2string(const uint8_t* buf, size_t len) {
-    char tmp[8];
-    QStringList sl;
-    for (size_t i = 0; i < len; i++) {
-        uint8_t c = buf[i];
-        snprintf(tmp, sizeof(tmp), "%02X", (uint8_t)c);
-        sl.append(tmp);
-    }
-    return sl.join(" ");
-}
-
-inline QString bytes2string(const QByteArray& arr) {
-    return bytes2string((const uint8_t*)arr.constData(), arr.size());
-}
+#include "stcutil.h"
 
 class Serial : public QSerialPort {
     Q_OBJECT

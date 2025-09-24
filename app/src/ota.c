@@ -173,12 +173,21 @@ void ota_on_app_data(const get_app_data_res_t *res) {
     if (ota_state == OTA_STATE_DOWNLOADING) {
         debugf3("Received app data: result=%bu %s",
                 res->result, ota_result_to_string(res->result));
-        debugf4("offset=%lu, size=%lu, crc=0x%08lX", res->offset, res->size, res->crc);
+        debugf4("offset=0x%08lX, size=0x%08lX, crc=0x%08lX", res->offset, res->size, res->crc);
         if (res->result == OTA_OK &&
             verify_app_data_res(res) &&
             res->offset == ota_info.dlctx.received &&
             0 < res->size && res->size <= PKT_DAT_MAX_LEN) {
+            uint8_t xdata buf[PKT_DAT_MAX_LEN];
+            // write to norflash
             norflash_write_page(flash_addr + ota_info.dlctx.received, res->dat, res->size);
+            // read out verify
+            norflash_read(flash_addr + ota_info.dlctx.received, buf, res->size);
+            if (memcmp(buf, res->dat, res->size) != 0) {
+                debugf1("Norflash verify error");
+                ota_state = OTA_STATE_ERROR;
+                return;
+            }
             ota_info.dlctx.received += res->size;
             ota_info.dlctx.crc = hb_crc32_slow_update(ota_info.dlctx.crc, res->dat, res->size);
 
@@ -241,7 +250,7 @@ void ota_run(void) {
             debugf1("OTA check timeout");
             break;
         case OTA_STATE_PREPARING:
-            erase_size = (pappu->size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1);
+            erase_size = flash_addr + (pappu->size + NORFLASH_SECTOR_SIZE - 1) & ~(NORFLASH_SECTOR_SIZE - 1); // 罪魁祸首，忘了+flash_addr
             addr = flash_addr;
             debugf3("App size=0x%08lX, erase size=0x%08lX", pappu->size, erase_size);
             ota_info.seq += 2;

@@ -14,6 +14,7 @@ void uart1_wait_sent(void);
 void uart1_run(void);
 void uart1_send_check_ota(app_info_t* current);
 void uart1_send_get_app_data(const get_app_data_req_t* req);
+void uart1_send_sysctx(void);
 
 #ifdef DEBUG
 void uart1_debug(const char* fmt, ...);
