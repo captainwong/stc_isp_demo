@@ -85,7 +85,7 @@ typedef union {
 
 #define LDR_SIZE 0x3800                                             // bootloader flash space = 13.5KB, at the beginning of on-chip flash
 #define FACTORY_META_SIZE 0x200                                     // factory metadata space = 512B, after bootloader
-#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 50KB, after metadata
+#define APP_MAX_SIZE (STC_ROM_SIZE - LDR_SIZE - FACTORY_META_SIZE)  // max application size = 49.5KB, after metadata
 #define IAP_ADDR_FACTORY_META LDR_SIZE                              // factory metadata address for IAP functions
 #define IAP_ADDR_APP_START (LDR_SIZE + FACTORY_META_SIZE)           // application start address for IAP functions
 #define IAP_ADDR_APP_END (IAP_ADDR_APP_START + APP_MAX_SIZE)        // application end address for IAP functions
