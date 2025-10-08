@@ -103,12 +103,6 @@
     <ClCompile Include="Serial.cpp">
       <Filter>serial</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex.cpp">
-      <Filter>disassembler</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex80.cpp">
-      <Filter>disassembler</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\libhb\libstc\disassembler\intel8051is.cpp">
       <Filter>disassembler</Filter>
     </ClCompile>
@@ -181,12 +175,6 @@
     </ClInclude>
     <ClInclude Include="QHexView\model\commands\replacecommand.h">
       <Filter>qhexview</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex.h">
-      <Filter>disassembler</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex80.h">
-      <Filter>disassembler</Filter>
     </ClInclude>
     <ClInclude Include="..\..\libhb\libstc\disassembler\intel8051is.h">
       <Filter>disassembler</Filter>

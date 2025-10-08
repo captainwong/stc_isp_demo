@@ -30,23 +30,11 @@
     <ClCompile Include="..\..\libhb\libhbcheck\hb_check.c">
       <Filter>c</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex.cpp">
-      <Filter>disassembler</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex80.cpp">
-      <Filter>disassembler</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\libhb\libstc\disassembler\intel8051is.cpp">
       <Filter>disassembler</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex.h">
-      <Filter>disassembler</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex80.h">
-      <Filter>disassembler</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\libhb\libstc\disassembler\intel8051is.h">
       <Filter>disassembler</Filter>
     </ClInclude>

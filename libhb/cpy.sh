@@ -27,10 +27,6 @@ libstc/stc_helper_gpio.h
 libstc/stc_helpers.h
 libstc/stc8h.c
 libstc/stc8h.h
-libstc/disassembler/hex.h
-libstc/disassembler/hex.cpp
-libstc/disassembler/hex80.h
-libstc/disassembler/hex80.cpp
 libstc/disassembler/intel8051is.h
 libstc/disassembler/intel8051is.cpp
 libhbcheck/hb_check.h

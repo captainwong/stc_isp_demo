@@ -115,8 +115,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\common\protocol.c" />
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex.cpp" />
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex80.cpp" />
     <ClCompile Include="..\..\libhb\libstc\disassembler\intel8051is.cpp" />
     <ClCompile Include="flash.cpp" />
     <ClCompile Include="QHexView\dialogs\hexfinddialog.cpp" />
@@ -163,8 +161,6 @@
     <QtMoc Include="Serial.h" />
     <QtMoc Include="QHexView\dialogs\hexfinddialog.h" />
     <ClInclude Include="..\..\common\protocol.h" />
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex.h" />
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex80.h" />
     <ClInclude Include="..\..\libhb\libstc\disassembler\intel8051is.h" />
     <QtMoc Include="flash.h" />
     <ClInclude Include="QHexView\model\buffer\qmappedfilebuffer.h" />

@@ -4,9 +4,9 @@
 #include <jlib/jlib/qt/QtPathHelper.h>
 #include <jlib/jlib/qt/darkmode.h>
 #include <jlib/jlib/util/std_util.h>
+#include <jlib/jlib/util/hex80.h>
 #include <libemb/emb_bitrev.h>
 #include <libhbcheck/libhbcheck.h>
-#include <libstc/disassembler/hex80.h>
 #include <libstc/disassembler/intel8051is.h>
 #include <libstc/stc8h.h>
 
@@ -638,8 +638,8 @@ void programmer::slot_serial_parsed(const QByteArray& buf) {
     }
 }
 
-static bool tryParseHex80File(const std::string& file_content, std::vector<hex80_code_snippet_t>& snippets) {
-    std::vector<hex80_record_t> records;
+static bool tryParseHex80File(const std::string& file_content, std::vector<jlib::hex80_code_snippet_t>& snippets) {
+    std::vector<jlib::hex80_record_t> records;
     if (hex80_to_records(file_content, records)) {
         return false;
     }
@@ -686,7 +686,7 @@ void programmer::slotOpen() {
         pb->setValue(0);
         leRomSize->setText("0x" + QString::number(e2.size(), 16));
     } else if (fileName.endsWith(".hex", Qt::CaseInsensitive)) {
-        std::vector<hex80_code_snippet_t> snippets;
+        std::vector<jlib::hex80_code_snippet_t> snippets;
         if (!tryParseHex80File(dat.toStdString(), snippets)) {
             QMessageBox::critical(this, tr("Error"), tr("Failed to parse Hex80 file"));
             return;
@@ -778,7 +778,7 @@ void programmer::slotMerge() {
 #endif
 
     QString bootloader, metabin, userapp, allin1;
-    std::vector<hex80_code_snippet_t> ldr_snippets, user_snippets, allin1_snippets;
+    std::vector<jlib::hex80_code_snippet_t> ldr_snippets, user_snippets, allin1_snippets;
 
 #ifdef _DEBUG
     bootloader = dir + "/BOOTLOADER.hex";

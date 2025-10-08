@@ -2,8 +2,8 @@
 
 #include <jlib/jlib/util/std_util.h>
 #include <jlib/jlib/util/str_util.h>
+#include <jlib/jlib/util/hex80.h>
 #include <libhbcheck/libhbcheck.h>
-#include <libstc/disassembler/hex80.h>
 #include <libstc/disassembler/intel8051is.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -180,12 +180,12 @@ int main(int argc, char* argv[]) {
     fclose(f);
 
     // parse hex file
-    std::vector<hex80_record_t> records;
+    std::vector<jlib::hex80_record_t> records;
     if (hex80_to_records(file_content, records)) {
         std::cerr << "Failed to convert hex80 to records." << std::endl;
         return 1;
     }
-    std::vector<hex80_code_snippet_t> snippets;
+    std::vector<jlib::hex80_code_snippet_t> snippets;
     merge_hex80_records(records, snippets);
     if (snippets.empty()) {
         std::cerr << "No code snippets found in hex80 file." << std::endl;
@@ -204,7 +204,7 @@ int main(int argc, char* argv[]) {
         }
 
         // check if all other snippets addr bigger than ldr_meta_size + 3
-        if (!std::all_of(cpy.begin(), cpy.end(), [ldr_meta_size](const hex80_code_snippet_t& snip) {
+        if (!std::all_of(cpy.begin(), cpy.end(), [ldr_meta_size](const jlib::hex80_code_snippet_t& snip) {
                 return snip.addr >= ldr_meta_size + 3;
             })) {
             std::cerr << "Some code snippet address is less than bootloader/meta size + 3." << std::endl;

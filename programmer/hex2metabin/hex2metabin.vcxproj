@@ -156,14 +156,10 @@
   <ItemGroup>
     <ClCompile Include="..\..\libhb\libemb\emb_bitrev.c" />
     <ClCompile Include="..\..\libhb\libhbcheck\hb_check.c" />
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex.cpp" />
-    <ClCompile Include="..\..\libhb\libstc\disassembler\hex80.cpp" />
     <ClCompile Include="..\..\libhb\libstc\disassembler\intel8051is.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex.h" />
-    <ClInclude Include="..\..\libhb\libstc\disassembler\hex80.h" />
     <ClInclude Include="..\..\libhb\libstc\disassembler\intel8051is.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
