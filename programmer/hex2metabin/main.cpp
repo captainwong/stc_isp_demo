@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
 
     po::options_description desc(
         "Usage: crc -i input_file -l ldr_size -m meta_size -f fill_value -t app_build_timestamp -v app_version -M meta_bin_path -b bin_path\n"
-        "Example: crc -i input.hex -l 0x1000 0x200 -f 0x00 -t 0x68C7B8E7 -v 0x01000000 -M meta.bin -b app.bin\n");
+        "Example: crc -i input.hex -l 0x1000 -m 0x200 -f 0x00 -t 0x68C7B8E7 -v 0x01000000 -M meta.bin -b app.bin\n");
     auto init = desc.add_options();
     init = init("help,h", "Show usage");
     init = init("input,i", po::value<std::string>(&input_file), "Input file");

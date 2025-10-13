@@ -19,6 +19,9 @@
     <Filter Include="disassembler">
       <UniqueIdentifier>{867e2adb-af8d-47ed-bf4b-a9b2de2dd8de}</UniqueIdentifier>
     </Filter>
+    <Filter Include="json">
+      <UniqueIdentifier>{9a138b10-9d8b-4543-81bd-03877a96ffd0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
