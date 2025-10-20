@@ -20,8 +20,8 @@ enum {
     OTA_STATE_ERROR,
 };
 
-static app_info_t *papp = NULL;   // current running app info
-static app_info_t *pappu = NULL;  // app info of the app to be upgraded
+static app_info_t* papp = NULL;   // current running app info
+static app_info_t* pappu = NULL;  // app info of the app to be upgraded
 static uint8_t ota_state = OTA_STATE_IDLE;
 static uint16_t ota_timeout = 0;
 static uint16_t ota_1s_counter = 0;
@@ -41,7 +41,7 @@ static void request_next_block(void) {
     uart1_send_get_app_data(&req);
 }
 
-static bool verify_app_data_res(const get_app_data_res_t *res) {
+static bool verify_app_data_res(const get_app_data_res_t* res) {
     uint32_t crc = hb_crc32_slow_init();
     crc = hb_crc32_slow_update(crc, res->dat, res->size);
     crc = hb_crc32_slow_finalize(crc);
@@ -54,9 +54,9 @@ void ota_init(void) {
     debugf2("otaid=%bu", sysctx.st.otaid);
     // read out the newer ota info
     if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
-        norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+        norflash_read(NORFLASH_OTA_BACKUP_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
     } else {
-        norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+        norflash_read(NORFLASH_OTA_MASTER_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
     }
 
     if (ota_info.current_app == FLASH_APP_ID_FACTORY) {
@@ -100,10 +100,10 @@ void ota_init(void) {
             // write back to norflash
             if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
                 norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
-                norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
             } else {
                 norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
-                norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
             }
             sysctx.st.otaid = !(sysctx.st.otaid);
             debugf1("Abnormal dlctx.state, reset to IDLE");
@@ -132,7 +132,7 @@ void ota_1s_event(void) {
     }
 }
 
-void ota_on_latest_app_info(const latest_app_info_t *info) {
+void ota_on_latest_app_info(const latest_app_info_t* info) {
     if (ota_state == OTA_STATE_CHECKING) {
         debugf3("Latest App info: result=%bu %s",
                 info->result, ota_result_to_string(info->result));
@@ -170,7 +170,7 @@ void ota_on_latest_app_info(const latest_app_info_t *info) {
     }
 }
 
-void ota_on_app_data(const get_app_data_res_t *res) {
+void ota_on_app_data(const get_app_data_res_t* res) {
     if (ota_state == OTA_STATE_DOWNLOADING) {
         debugf3("Received app data: result=%bu %s",
                 res->result, ota_result_to_string(res->result));
@@ -180,6 +180,8 @@ void ota_on_app_data(const get_app_data_res_t *res) {
             res->offset == ota_info.dlctx.received &&
             0 < res->size && res->size <= PKT_DAT_MAX_LEN) {
             uint8_t xdata buf[PKT_DAT_MAX_LEN];
+            // reset timeout counter
+            ota_timeout = OTA_TIMEOUT_MAX;
             // write to norflash
             norflash_write_page(flash_addr + ota_info.dlctx.received, res->dat, res->size);
             // read out verify
@@ -214,10 +216,10 @@ void ota_on_app_data(const get_app_data_res_t *res) {
                     // write back to norflash
                     if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
                         norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
-                        norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                        norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
                     } else {
                         norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
-                        norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                        norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
                     }
                     sysctx.st.otaid = !(sysctx.st.otaid);
                     debugf1("OTA update applied, will use new app on next reboot.");
@@ -261,10 +263,10 @@ void ota_run(void) {
             // write back to norflash
             if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
                 norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
-                norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
             } else {
                 norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
-                norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
             }
             sysctx.st.otaid = !(sysctx.st.otaid);
             debugf1("Erasing norflash app area...");
@@ -285,10 +287,10 @@ void ota_run(void) {
                 // write back to norflash
                 if (sysctx.st.otaid == FLASH_OTA_ID_MASTER) {
                     norflash_erase_sector(NORFLASH_OTA_MASTER_ADDR);
-                    norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                    norflash_write_page(NORFLASH_OTA_MASTER_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
                 } else {
                     norflash_erase_sector(NORFLASH_OTA_BACKUP_ADDR);
-                    norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t *)&ota_info, sizeof(ota_info_t));
+                    norflash_write_page(NORFLASH_OTA_BACKUP_ADDR, (uint8_t*)&ota_info, sizeof(ota_info_t));
                 }
                 sysctx.st.otaid = !(sysctx.st.otaid);
                 ota_state = OTA_STATE_DOWNLOADING;
